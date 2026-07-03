@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="locations.css">
+
+</head>
+<body>
+    <canvas id="backer" width="1600" height="800"></canvas>
+    <canvas id="main" width="1400" height="700"></canvas>
+    <canvas id="sidebar" width="199" height="700"></canvas>
+    <canvas id="topbar" width="1600" height="99"></canvas>
+
+    <div id="main-content">
+        <h1 id="page-title"></h1>
+        <p id="page-description"></p>
+    </div>
+
+    <div id="timer-page-content" class="hidden">
+        <div id="timer-controls">
+            <button id="pause-timer-button" class="timer-icon-button" aria-label="Pause timer" title="Pause">
+                <img src="images/pause-icon.png" alt="">
+            </button>
+            <button id="finish-timer-button" class="timer-icon-button" aria-label="Finish timer" title="Finish">
+                <img src="images/finish-icon.png" alt="">
+            </button>
+            <button id="return-timer-button" class="timer-icon-button" aria-label="Return to timer" title="Return">
+                <img src="images/return-icon.png" alt="">
+            </button>
+        </div>
+        <h1 id="timer">00:00:00</h1>
+    </div>
+    <div id="project-page-content" class="hidden">
+        <button id="hi">hi</button>
+
+        <label for="greeting">Choose a greeting:</label>
+
+        <select name="greeting" id="greeting">
+        <option value="hello">Hello</option>
+        </select>
+    </div>
+    
+
+    <h1 id="optionsheader">Options</h1>
+    <!--Sidebar Buttons-->
+    <div>
+        <button id="timer-page-button" class="sidebar-button selected">Study Timer</button>
+        <button id="projects-page-button" class="sidebar-button">Projects</button>
+        <button id="progress-page-button" class="sidebar-button">Progress Summary</button>
+        <button id="settings-page-button" class="sidebar-button">Settings</button>
+    </div>
+
+    <script src="main.js" type="module"></script>
+</body>
+</html>
