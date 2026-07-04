@@ -34,14 +34,19 @@
         </div>
         <h1 id="timer">00:00:00</h1>
     </div>
-    <div id="project-page-content" class="hidden">
-        <button id="hi">hi</button>
+    <div id="projects-page-content" class="hidden">
+        <div id="projects-left-half">
+            
+            <input id="project-input" type="text" placeholder="Enter project name">
+            <p id="no-repeat-warning" class="hidden">Please do not repeat project names.</p>
 
-        <label for="greeting">Choose a greeting:</label>
+            <select id="project-dropdown"></select>
+        </div>
+        <div id="projects-right-half">
+            <button id="hi">hi</button>
+        </div>
 
-        <select name="greeting" id="greeting">
-        <option value="hello">Hello</option>
-        </select>
+
     </div>
     
 

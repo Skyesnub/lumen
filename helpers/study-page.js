@@ -1,4 +1,5 @@
 import { pageState, studyBackgroundState, timerState } from "./state.js";
+import { enableWakeLock, disableWakeLock } from "./wakeLock.js";
 
 const glowColors = [
     "#60a5fa",
@@ -25,9 +26,15 @@ export function initStudyPage(options) {
     timerPageContent = document.getElementById("timer-page-content");
     timerHTML = document.getElementById("timer");
 
-    document.getElementById("pause-timer-button").onclick = pauseTimer;
-    document.getElementById("return-timer-button").onclick = resumeTimer;
-    document.getElementById("finish-timer-button").onclick = finishTimer;
+    document.getElementById("pause-timer-button").onclick = () => {
+        pauseTimer(); disableWakeLock();
+    } 
+    document.getElementById("return-timer-button").onclick = () => {
+        resumeTimer(); enableWakeLock();
+    } 
+    document.getElementById("finish-timer-button").onclick = () => {
+        finishTimer(); disableWakeLock();
+    } 
 
     updateTimerDisplay();
     updateStudyPageVisibility();

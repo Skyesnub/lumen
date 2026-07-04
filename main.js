@@ -4,8 +4,9 @@ import {
     redrawStudyPageBackground,
     updateStudyPageVisibility
 } from "./helpers/study-page.js";
-import { updateProjectsPageVisibility } from "./helpers/projects-page.js";
+import { updateDropdown, updateProjectsPageVisibility, drawLineSeparator } from "./helpers/projects-page.js";
 import { pageNames, pageState } from "./helpers/state.js";
+import { disableWakeLock } from "./helpers/wakeLock.js";
 
 const mainCanvas = document.getElementById("main");
 const mainCtx = mainCanvas.getContext("2d");
@@ -29,6 +30,8 @@ initStudyPage({
     mainCtx: mainCtx
 });
 drawNormalMainBackground();
+updateDropdown();
+disableWakeLock();
 
 const pageButtons = {
     timer: document.getElementById("timer-page-button"),
@@ -55,6 +58,7 @@ function updateSelectedButton() {
     updatePageText();
     updateStudyPageVisibility();
     updateProjectsPageVisibility();
+    drawLineSeparator();
 }
 
 function goToPage(pageName) {

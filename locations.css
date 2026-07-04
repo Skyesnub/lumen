@@ -31,23 +31,55 @@
     z-index: 1;
 }
 
+/* Start of project page content */
+
 #projects-page-content {
+    position: absolute;
+    top: 430px;
+    left: 200px;
+    width: 1400px; 
+    display: flex; /* Sits the two halves side-by-side */
     z-index: 1;
 }
+
+#projects-left-half, #projects-right-half {
+  flex: 1; /* Gives each half exactly 700px of space */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+}
+
 #projects-page-content.hidden {
     display:none;
 }
 
+#no-repeat-warning {
+    position: absolute;
+    top: 45px;
+    left: 25%;
+    transform: translateX(-50%);
+    color: red;
+}
+
+#no-repeat-warning.hidden {
+    display: none;
+}
+
 #hi {
-    position: absolute;
-    top: 500px;
-    left: 500px
+    display: flex;
+    justify-content: center;
+    gap: 8px;
 }
-#greeting {
-    position: absolute;
-    top:400px;
-    left: 500px;
+
+#project-input {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
 }
+
+/* End of project page content */
 
 #timer-page-content {
     position: absolute;
