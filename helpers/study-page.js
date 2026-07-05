@@ -135,7 +135,7 @@ function logStudySession() {
         ? course.projects.find(project => project.id === timerProjectSelect.value)
         : undefined;
 
-    if (!project) {
+    if (!course || !project) {
         console.log("No project selected — session was not logged.");
         return;
     }
@@ -145,6 +145,7 @@ function logStudySession() {
         duration: timerState.totalTime
     });
     project.totalStudyTime += timerState.totalTime;
+    course.totalStudyTime += timerState.totalTime;
 
     console.log(`Logged ${timerState.totalTime.toFixed(1)}s to "${project.name}"`, project);
 }

@@ -4,7 +4,11 @@ import {
     redrawStudyPageBackground,
     updateStudyPageVisibility
 } from "./helpers/study-page.js";
-import { updateDropdown, updateProjectsPageVisibility, drawLineSeparator } from "./helpers/projects-page.js";
+import { updateDropdown, 
+        updateProjectsPageVisibility, 
+        drawLineSeparator 
+} from "./helpers/projects-page.js";
+import { updateProgressPageVisibility } from "./helpers/progress-page.js";
 import { pageNames, pageState } from "./helpers/state.js";
 import { disableWakeLock } from "./helpers/wakelock.js";
 
@@ -58,6 +62,7 @@ function updateSelectedButton() {
     updatePageText();
     updateStudyPageVisibility();
     updateProjectsPageVisibility();
+    updateProgressPageVisibility();
     drawLineSeparator();
 }
 

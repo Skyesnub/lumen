@@ -106,7 +106,7 @@
     gap: 12px;
 }
 
-.timer-select-group {
+.label-select-group {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -173,6 +173,55 @@ body.study-mode #page-description,
 body.study-mode #timer {
     color: #f8fafc;
 }
+
+/* Start of progress page content */
+
+#progress-page-content {
+    position: absolute;
+    top: 410px;
+    left: 200px;
+    width: 1400px;
+    display: flex;
+    z-index: 1;
+}
+
+#progress-page-content.hidden {
+    display: none;
+}
+
+#progress-left-half, #progress-right-half {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+}
+
+#progress-stats {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+}
+
+.progress-stats-title {
+    color: #1f2937;
+    margin: 0;
+}
+
+.progress-stat-line {
+    color: #374151;
+    font-size: 18px;
+    margin: 0;
+}
+
+.progress-stat-label {
+    font-weight: 600;
+}
+
+/* End of progress page content */
 
 /* Sidebar button initiation */
 

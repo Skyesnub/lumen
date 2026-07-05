@@ -104,6 +104,7 @@ deleteProjectButton.addEventListener("click", () => {
     if (confirmed) {
         const idx = course.projects.findIndex(p => p.id === project.id);
         if (idx !== -1) course.projects.splice(idx, 1);
+        course.totalStudyTime -= project.totalStudyTime;
 
         updateDropdown();
     }
@@ -113,6 +114,7 @@ function createCourseObject(title) {
     return {
         id: crypto.randomUUID(),
         name: title,
+        totalStudyTime: 0,
         projects: []
     }
 }
