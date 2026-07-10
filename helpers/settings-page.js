@@ -22,16 +22,6 @@ const COLOR_LABELS = {
     violet: "Violet"
 };
 
-// This module's own references to the canvases it needs to repaint when
-// the theme changes. Getting a context for a canvas that's already in use
-// elsewhere is safe — it returns the same context object, not a new one.
-const mainCanvas = document.getElementById("main");
-const mainCtx = mainCanvas.getContext("2d");
-const sidebarCanvas = document.getElementById("sidebar");
-const sidebarCtx = sidebarCanvas.getContext("2d");
-const topbarCanvas = document.getElementById("topbar");
-const topbarCtx = topbarCanvas.getContext("2d");
-
 const settingsPageContent = document.getElementById("settings-page-content");
 const shapeColorSelect = document.getElementById("shape-color-select");
 const themeColorSelect = document.getElementById("theme-color-select");
@@ -44,34 +34,12 @@ export const settingsState = {
 // Consumed by study-page.js when a new glow shape is created.
 export let glowColorPalette = [];
 
-// Consumed by study-page.js when drawing the idle background and the
-// timer button backplate.
-export let themeColors = {
-    background: "",
-    sidebar: "",
-    topbar: "",
-    backplateStrong: "",
-    backplateSoft: "",
-    backplateGlow: ""
-};
-
 function buildShapeShades(hue) {
     return [
         `hsl(${hue}, 78%, 45%)`, // deep
         `hsl(${hue}, 78%, 60%)`, // medium
         `hsl(${hue}, 78%, 75%)`  // light
     ];
-}
-
-function buildThemeColors(hue) {
-    return {
-        background: `hsl(${hue}, 34%, 91%)`,
-        sidebar: `hsl(${hue}, 24%, 62%)`,
-        topbar: `hsl(${hue}, 35%, 94%)`,
-        backplateStrong: `hsla(${hue}, 46%, 80%, 0.7)`,
-        backplateSoft: `hsla(${hue}, 46%, 80%, 0.4)`,
-        backplateGlow: `hsla(${hue}, 46%, 92%, 0.45)`
-    };
 }
 
 function applyShapeColor(colorName) {
@@ -93,26 +61,11 @@ function applyShapeColor(colorName) {
 function applyThemeColor(colorName) {
     settingsState.themeColor = colorName;
 
-    const hue = RAINBOW_COLORS[colorName];
-    Object.assign(themeColors, buildThemeColors(hue));
-
-    // Sidebar and topbar are canvases painted once at startup in main.js,
-    // not styled via CSS, so repaint them directly here.
-    sidebarCtx.fillStyle = themeColors.sidebar;
-    sidebarCtx.fillRect(0, 0, sidebarCanvas.width, sidebarCanvas.height);
-
-    topbarCtx.fillStyle = themeColors.topbar;
-    topbarCtx.fillRect(0, 0, topbarCanvas.width, topbarCanvas.height);
-
-    // If the idle (non-study) background is what's currently showing,
-    // repaint it now so the new theme is visible immediately. This mirrors
-    // drawNormalMainBackground() in study-page.js — kept separate here
-    // deliberately, to avoid a circular import between the two files.
-    if (!studyBackgroundState.running) {
-        mainCtx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
-        mainCtx.fillStyle = themeColors.background;
-        mainCtx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
-    }
+    // Every themed color in the app (backgrounds, buttons, the ambient page
+    // wash, the study-mode backdrop) is CSS's hsl()/hsla() reading this one
+    // custom property, so changing it re-themes the whole app instantly —
+    // no manual repainting needed anywhere.
+    document.documentElement.style.setProperty("--theme-hue", RAINBOW_COLORS[colorName]);
 }
 
 function populateColorSelect(selectEl, selectedValue) {

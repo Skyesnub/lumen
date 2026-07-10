@@ -1,5 +1,7 @@
 import { db } from "./db.js";
 import { loadCoursesFromDatabase, clearCoursesArray } from "./projects-page.js";
+import { updateTimerPageClassDropdown, updateTimerPageProjectDropdown } from "./study-page.js";
+import { updateProgressClassDropdown, updateProgressProjectDropdown, updateProgressStats } from "./progress-page.js";
 
 const emailInput = document.getElementById("auth-email-input");
 const passwordInput = document.getElementById("auth-password-input");
@@ -80,6 +82,21 @@ signOutButton.addEventListener("click", () => {
     db.auth.signOut();
 });
 
+// The Projects page refreshes its own dropdowns internally inside
+// loadCoursesFromDatabase()/clearCoursesArray(). The Timer and Progress
+// pages show the same course/project data in their own separate
+// dropdowns, but normally only refresh those when you navigate onto that
+// page — so without this, whichever page happens to be showing when you
+// log in (usually the Timer page, since it's the default) would display
+// empty/stale dropdowns until you clicked away and back.
+function refreshCourseDependentDropdowns() {
+    updateTimerPageClassDropdown();
+    updateTimerPageProjectDropdown();
+    updateProgressClassDropdown();
+    updateProgressProjectDropdown();
+    updateProgressStats();
+}
+
 db.auth.onAuthStateChange((event, session) => {
     const loggedIn = !!session;
 
@@ -88,10 +105,11 @@ db.auth.onAuthStateChange((event, session) => {
     if (loggedIn) {
         emailInput.value = "";
         passwordInput.value = "";
-        loadCoursesFromDatabase();
+        loadCoursesFromDatabase().then(refreshCourseDependentDropdowns);
     } else {
         // Make sure the next person to use this browser doesn't see
         // whatever the previous person had loaded.
         clearCoursesArray();
+        refreshCourseDependentDropdowns();
     }
 });

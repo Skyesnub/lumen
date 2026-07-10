@@ -1,4 +1,6 @@
-/* Auth gate: while logged out, hide the app and show only the login card */
+/* ============================================================
+   Auth gate
+   ============================================================ */
 
 body.logged-out #app-shell {
     display: none;
@@ -14,57 +16,52 @@ body.logged-out #auth-page-content {
     justify-content: center;
     position: fixed;
     inset: 0;
-    background: #12101c;
+    padding: var(--space-5);
+    background:
+        radial-gradient(ellipse 70% 50% at 20% 10%, hsla(var(--theme-hue), 55%, 30%, 0.6), transparent 65%),
+        radial-gradient(ellipse 60% 45% at 85% 90%, hsla(calc(var(--theme-hue) + 40), 55%, 28%, 0.5), transparent 65%),
+        var(--surface-dark);
+}
+
+.auth-logo {
+    display: block;
+    margin: 0 auto var(--space-4);
+    color: var(--accent);
 }
 
 .auth-card {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    width: 320px;
-    padding: 32px;
-    border-radius: 16px;
-    background: #ffffff;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    gap: var(--space-3);
+    width: min(360px, 100%);
+    padding: var(--space-6) var(--space-5);
+    border-radius: var(--radius-lg);
+    background: var(--surface-raised);
+    box-shadow: var(--shadow-lg);
 }
 
 .auth-card h1 {
-    margin: 0 0 4px 0;
-    color: #1f2937;
+    margin: 0 0 var(--space-2);
     text-align: center;
-    font-size: 24px;
 }
 
 .auth-card input {
-    padding: 10px 12px;
-    border-radius: 8px;
-    border: 1px solid #d1d5db;
-    font-size: 15px;
+    text-align: left;
 }
 
-.auth-card button {
-    padding: 10px 12px;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-}
-
-#auth-submit-button {
-    background: #6366f1;
-    color: #ffffff;
-    font-weight: 600;
-}
-
-#auth-submit-button:disabled {
-    opacity: 0.6;
-    cursor: default;
+.auth-card > button {
+    margin-top: var(--space-2);
 }
 
 #auth-toggle-mode-button {
     background: transparent;
-    color: #6366f1;
+    color: var(--accent);
     font-weight: 500;
-    padding: 4px;
+    padding: var(--space-2);
+}
+
+#auth-toggle-mode-button:hover {
+    background: var(--accent-soft);
 }
 
 #auth-error-message {
@@ -85,280 +82,289 @@ body.logged-out #auth-page-content {
     color: #059669;
 }
 
-/* Canvases */
-#backer {
-    position: absolute;
-    top: 0px;
-    left: 0px
+/* ============================================================
+   App shell
+   ============================================================ */
+
+#app-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: 100dvh;
+}
+
+#top-bar {
+    padding: calc(var(--space-4) + var(--safe-top)) var(--space-5) var(--space-4);
+    text-align: center;
+}
+
+#top-bar h1 {
+    font-size: 22px;
+    margin-bottom: var(--space-1);
+}
+
+#top-bar p {
+    font-size: 14px;
+    margin: 0;
+}
+
+#page-container {
+    flex: 1;
+    padding: 0 var(--space-4) calc(96px + var(--safe-bottom));
+    display: flex;
+    flex-direction: column;
+}
+
+.page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    max-width: 520px;
+    width: 100%;
+    margin: 0 auto;
+}
+
+.card {
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.card h2 {
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-soft);
+    font-family: var(--font-body);
+    font-weight: 700;
+}
+
+/* ============================================================
+   Bottom dock navigation
+   ============================================================ */
+
+#bottom-dock {
+    position: fixed;
+    left: 50%;
+    bottom: calc(var(--space-4) + var(--safe-bottom));
+    transform: translateX(-50%);
+    display: flex;
+    gap: var(--space-1);
+    padding: var(--space-2);
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    box-shadow: var(--shadow-lg);
+    z-index: 10;
+}
+
+.nav-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    width: 68px;
+    padding: var(--space-2) var(--space-1);
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--ink-soft);
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.nav-button:hover {
+    background: var(--accent-soft);
+    color: var(--ink);
+}
+
+.nav-button svg {
+    width: 22px;
+    height: 22px;
+}
+
+.nav-button.selected {
+    background: var(--accent);
+    color: #ffffff;
+}
+
+/* ============================================================
+   Timer page
+   ============================================================ */
+
+#timer-stage {
+    position: relative;
+    min-height: min(62dvh, 560px);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--surface-raised);
+    box-shadow: var(--shadow-sm);
 }
 
 #main {
     position: absolute;
-    top: 100px;
-    left: 200px;
-} 
-
-#sidebar {
-    position: absolute;
-    top: 100px;
-    left: 0px;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
 }
 
-#topbar {
-    position: absolute;
-    top: 0px;
-    left: 0px
-}
-
-#main-content {
-    position: absolute;
-    top: 140px;
-    left: 220px;
-    width: 1320px;
+#timer-stage-content {
+    position: relative;
     z-index: 1;
-}
-
-/* Start of project page content */
-
-#projects-page-content {
-    position: absolute;
-    top: 410px;
-    left: 200px;
-    width: 1400px; 
-    display: flex;
-    z-index: 1;
-}
-
-#projects-left-half, #projects-right-half {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 12px;
-}
-
-#projects-page-content.hidden {
-    display:none;
-}
-
-#no-repeat-warning,
-#no-repeat-course-warning {
-    color: red;
-    margin: 0;
-    text-align: center;
-}
-
-#no-repeat-warning.hidden,
-#no-repeat-course-warning.hidden {
-    display: none;
-}
-
-#hi {
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-}
-
-.dropdown-action-group {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
-}
-
-#project-input,
-#course-input {
-    display: flex;
-    justify-content: center;
-}
-#project-dropdown,
-#course-dropdown,
-#project-nest-input {
-    display: flex;
-    justify-content: center;
-}
-
-/* End of project page content */
-
-#timer-page-content {
-    position: absolute;
-    top: 330px;
-    left: 200px;
-    width: 1400px;
-    z-index: 1;
+    height: 100%;
     display: flex;
     flex-direction: column;
+    justify-content: space-between;
     align-items: center;
-    gap: 12px;
+    gap: var(--space-4);
+    padding: var(--space-5);
 }
 
-.label-select-group {
+.timer-selects {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
+    flex-direction: column;
+    gap: var(--space-3);
+    width: 100%;
 }
 
-
-#timer-page-content.hidden {
-    display: none;
+#timer {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(40px, 12vw, 64px);
+    text-align: center;
+    letter-spacing: -0.02em;
 }
 
 #timer-controls {
     display: flex;
-    justify-content: center;
-    gap: 16px;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-pill);
+    background: hsla(0, 0%, 100%, 0.16);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: var(--shadow-md);
+}
+
+body.study-mode #timer-controls {
+    background: hsla(0, 0%, 100%, 0.10);
 }
 
 .timer-icon-button {
     display: grid;
     place-items: center;
-    width: 76px;
-    height: 76px;
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
-    background: transparent;
+    background: hsla(0, 0%, 100%, 0.9);
+    color: var(--accent-strong);
     border: none;
     padding: 0;
 }
 
 .timer-icon-button:hover {
-    background: transparent;
-    transform: scale(1.08);
+    background: #ffffff;
+    transform: scale(1.06);
 }
 
 .timer-icon-button:active {
-    background: transparent;
-    transform: scale(0.96);
+    transform: scale(0.94);
 }
 
-.timer-icon-button img {
-    display: block;
-    width: 64px;
-    height: 64px;
-    object-fit: contain;
-    pointer-events: none;
-}
-
-#timer {
-    margin: 0;
-    color: #1f2937;
-    font-size: 72px;
-    text-align: center;
-}
-
-#page-title {
-    color: #1f2937;
-}
-#page-description {
-    color: #374151;
-    font-size: 18px;
+.timer-icon-button svg {
+    width: 24px;
+    height: 24px;
 }
 
 body.study-mode #page-title,
-body.study-mode #page-description,
-body.study-mode #timer {
-    color: #f8fafc;
+body.study-mode #page-description {
+    color: var(--ink-on-dark);
 }
 
-/* Start of progress page content */
+/* ============================================================
+   Shared form layout pieces
+   ============================================================ */
 
-#progress-page-content {
-    position: absolute;
-    top: 410px;
-    left: 200px;
-    width: 1400px;
+.label-select-group {
     display: flex;
-    z-index: 1;
+    flex-direction: column;
+    gap: var(--space-1);
+    width: 100%;
 }
 
-#progress-page-content.hidden {
+.label-select-group label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-soft);
+}
+
+.dropdown-action-group {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.dropdown-action-group select {
+    flex: 1;
+}
+
+.dropdown-action-group button {
+    flex-shrink: 0;
+    background: transparent;
+    color: #dc2626;
+    border: 1.5px solid #fecaca;
+}
+
+.dropdown-action-group button:hover {
+    background: #fef2f2;
+}
+
+.warning-text {
+    margin: calc(var(--space-2) * -1) 0 0;
+    font-size: 13px;
+    color: #dc2626;
+}
+
+.warning-text.hidden {
     display: none;
 }
 
-#progress-left-half, #progress-right-half {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 12px;
-}
+/* ============================================================
+   Progress page stats
+   ============================================================ */
 
 #progress-stats {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    text-align: center;
+    align-items: flex-start;
 }
 
 .progress-stats-title {
-    color: #1f2937;
     margin: 0;
+    font-size: 18px;
 }
 
 .progress-stat-line {
-    color: #374151;
-    font-size: 18px;
     margin: 0;
+    color: var(--ink);
+    font-size: 15px;
 }
 
 .progress-stat-label {
-    font-weight: 600;
+    font-weight: 700;
+    color: var(--ink-soft);
 }
 
-/* End of progress page content */
-
-/* Start of settings page content */
-
-#settings-page-content {
-    position: absolute;
-    top: 410px;
-    left: 200px;
-    width: 1400px;
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-}
-
-#settings-page-content.hidden {
-    display: none;
-}
-
-#sign-out-button {
-    margin-top: 12px;
-}
-
-/* End of settings page content */
-
-/* Sidebar button initiation */
-
-#timer-page-button {
-    top: 200px;
-}
-#projects-page-button {
-    top: 300px;
-}
-#progress-page-button {
-    top: 400px;
-}
-#settings-page-button {
-    top: 500px;
-}
-
-#hello {
-    position: absolute;
-    top: 300px;
-    left: 500px
-}
-
-#optionsheader {
-    position: absolute;
-    top: 125px;
-    left: 0;
-    width: 199px;
-    text-align: center;
+#progress-stats-placeholder {
+    color: var(--ink-soft);
 }

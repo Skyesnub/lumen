@@ -1,6 +1,6 @@
 // Bump this version string any time you deploy changes, so installed
 // PWAs pick up the new files instead of serving stale cached ones.
-const CACHE_NAME = "study-timer-cache-v1";
+const CACHE_NAME = "study-timer-cache-v2";
 
 const PRECACHE_FILES = [
     "./",
@@ -23,10 +23,7 @@ const PRECACHE_FILES = [
     "./icons/icon-maskable-512.png",
     "./icons/apple-touch-icon.png",
     "./icons/favicon-32.png",
-    "./icons/favicon-16.png",
-    "./images/pause-icon.png",
-    "./images/finish-icon.png",
-    "./images/return-icon.png"
+    "./icons/favicon-16.png"
 ];
 
 self.addEventListener("install", (event) => {

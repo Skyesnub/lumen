@@ -1,41 +1,132 @@
+/* ============================================================
+   Design tokens
+   ============================================================ */
+
+:root {
+    --theme-hue: 245; /* overwritten live by settings-page.js */
+
+    /* Neutrals — light surface (default / idle) */
+    --ink: #1C1B29;
+    --ink-soft: #5B5871;
+    --surface: #F6F5FA;
+    --surface-raised: #FFFFFF;
+    --border: #E3E1EC;
+
+    /* Neutrals — dark surface (active study session) */
+    --ink-on-dark: #F4F2FA;
+    --ink-on-dark-soft: #B4AFCB;
+    --surface-dark: #0A0910;
+    --surface-dark-raised: #18151F;
+    --border-dark: rgba(255, 255, 255, 0.10);
+
+    /* Theme-derived accents (all computed from --theme-hue) */
+    --accent: hsl(var(--theme-hue), 58%, 50%);
+    --accent-strong: hsl(var(--theme-hue), 55%, 38%);
+    --accent-soft: hsl(var(--theme-hue), 70%, 94%);
+    --accent-ink: hsl(var(--theme-hue), 45%, 22%);
+
+    /* Type */
+    --font-display: "Space Grotesk", system-ui, sans-serif;
+    --font-body: "Manrope", system-ui, sans-serif;
+    --font-mono: "Space Mono", "SFMono-Regular", ui-monospace, monospace;
+
+    /* Spacing scale */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --space-7: 48px;
+
+    /* Radius */
+    --radius-sm: 10px;
+    --radius-md: 16px;
+    --radius-lg: 24px;
+    --radius-pill: 999px;
+
+    /* Shadow */
+    --shadow-sm: 0 2px 10px rgba(28, 27, 41, 0.06);
+    --shadow-md: 0 14px 34px rgba(28, 27, 41, 0.12);
+    --shadow-lg: 0 26px 64px rgba(20, 18, 30, 0.28);
+
+    /* Safe areas for notches / home indicators */
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Active study session swaps the whole app to its dark palette —
+   everything else below reads from these same variables, so nothing
+   else needs to know study mode is active. */
+body.study-mode {
+    --ink: var(--ink-on-dark);
+    --ink-soft: var(--ink-on-dark-soft);
+    --surface: var(--surface-dark);
+    --surface-raised: var(--surface-dark-raised);
+    --border: var(--border-dark);
+    --accent-soft: hsl(var(--theme-hue), 42%, 22%);
+}
+
+/* ============================================================
+   Base elements
+   ============================================================ */
+
+* {
+    box-sizing: border-box;
+}
+
 body {
     margin: 0;
     min-height: 100vh;
-    background: #f5f7fb;
-    color: #1f2937;
-    font-family: Arial, Helvetica, sans-serif;
+    min-height: 100dvh;
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
     line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    transition: color 0.4s ease;
+
+    /* The app's signature: a quiet ambient wash present on every page,
+       echoing the glow-shape animation that plays during study sessions. */
+    background:
+        radial-gradient(ellipse 60% 38% at 12% 8%, hsla(var(--theme-hue), 72%, 88%, 0.55), transparent 62%),
+        radial-gradient(ellipse 46% 32% at 88% 14%, hsla(calc(var(--theme-hue) + 42), 70%, 85%, 0.38), transparent 60%),
+        radial-gradient(ellipse 55% 42% at 50% 105%, hsla(calc(var(--theme-hue) - 34), 70%, 88%, 0.4), transparent 65%),
+        var(--surface);
+    background-attachment: fixed;
+    transition: background-color 0.4s ease;
 }
 
-h1,
-h2,
-h3 {
+body.study-mode {
+    background:
+        radial-gradient(ellipse 60% 38% at 18% 12%, hsla(var(--theme-hue), 55%, 28%, 0.55), transparent 62%),
+        radial-gradient(ellipse 46% 32% at 85% 20%, hsla(calc(var(--theme-hue) + 42), 55%, 26%, 0.4), transparent 60%),
+        var(--surface-dark);
+    background-attachment: fixed;
+}
+
+h1, h2, h3 {
     margin-top: 0;
-    margin-bottom: 12px;
-    color: #ffd8d8;
-    line-height: 1.2;
+    margin-bottom: var(--space-3);
+    color: var(--ink);
+    font-family: var(--font-display);
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
 }
 
-h1 {
-    font-size: 40px;
-}
-
-h2 {
-    font-size: 28px;
-}
-
-h3 {
-    font-size: 20px;
-}
+h1 { font-size: 28px; }
+h2 { font-size: 20px; }
+h3 { font-size: 16px; }
 
 p {
     margin-top: 0;
-    margin-bottom: 0px;
-    color: #4b5563;
+    margin-bottom: 0;
+    color: var(--ink-soft);
 }
 
 a {
-    color: #2563eb;
+    color: var(--accent);
     text-decoration: none;
 }
 
@@ -45,92 +136,84 @@ a:hover {
 
 button {
     border: none;
-    border-radius: 6px;
-    background: #7486b0;
-    color: rgb(3, 0, 52);
+    border-radius: var(--radius-sm);
+    background: var(--accent);
+    color: #ffffff;
     cursor: pointer;
     font: inherit;
-    font-weight: 700;
-    padding: 10px 16px;
+    font-weight: 600;
+    padding: 12px 18px;
+    transition: background 0.15s ease, transform 0.1s ease, opacity 0.15s ease;
 }
 
 button:hover {
-    background: #7b8fc1;
+    background: var(--accent-strong);
 }
 
 button:active {
-    background: #a9b4d7;
+    transform: scale(0.97);
 }
 
 button:disabled {
-    background: #9ca3af;
+    background: var(--border);
+    color: var(--ink-soft);
     cursor: not-allowed;
+    transform: none;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 input,
 textarea,
 select {
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    background: white;
-    color: #1f2937;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface-raised);
+    color: var(--ink);
     font: inherit;
-    padding: 10px 12px;
+    padding: 11px 14px;
+    width: 100%;
 }
 
 input:focus,
 textarea:focus,
 select:focus {
-    border-color: #2563eb;
-    outline: 3px solid #bfdbfe;
+    border-color: var(--accent);
+    outline: none;
 }
 
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9' fill='none'%3E%3Cpath d='M1 1L7 7L13 1' stroke='%235B5871' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 38px;
+}
+
+/* Legacy utility classes from earlier scaffolding — left in place in
+   case anything still references them, restyled to match the new tokens. */
+
 .container {
-    max-width: 1000px;
+    max-width: 640px;
     margin: 0 auto;
-    padding: 32px 24px;
+    padding: var(--space-6) var(--space-5);
 }
 
 .panel {
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    background: white;
-    padding: 24px;
-    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
-}
-
-/* SIDEBAR BUTTONS (class) */
-
-.sidebar-button {
-    position: absolute;
-    left: 0;
-    width: 199px;
-    height: 100px;
-    box-sizing: border-box;
-    border-radius: 0;
-    border-top: 1px solid rgba(3, 0, 52, 1);
-    border-bottom: 1px solid rgba(3, 0, 52, 1);
-    background: transparent;
-    color: #f8fafc;
-    padding: 14px 18px;
-    text-align: left;
-}
-
-.sidebar-button:hover {
-    background: rgba(255, 255, 255, 0.12);
-}
-
-.sidebar-button:active {
-    background: rgba(255, 255, 255, 0.2);
-}
-.sidebar-button.selected {
-    background: rgba(255, 255, 255, 0.2);
-    box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.25);
-
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-raised);
+    padding: var(--space-5);
+    box-shadow: var(--shadow-sm);
 }
 
 .hidden {
-    display: none;
+    display: none !important;
 }
-
-

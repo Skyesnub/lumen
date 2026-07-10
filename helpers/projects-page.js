@@ -1,9 +1,6 @@
 import { pageState } from "./state.js";
 import { db } from "./db.js";
 
-const mainCanvas = document.getElementById("main");
-const mainCtx = mainCanvas.getContext("2d");
-
 export let coursesArray = []
 
 let projectsPageContent = document.getElementById("projects-page-content")
@@ -303,18 +300,6 @@ export function updateProjectsPageVisibility() {
     const onProjectsPage = pageState.currentPage === "projects";
 
     projectsPageContent.classList.toggle("hidden", !onProjectsPage);
-}
-
-export function drawLineSeparator() {
-    if (pageState.currentPage === "projects") {
-        mainCtx.beginPath();
-        mainCtx.moveTo(700, 0);
-        mainCtx.lineTo(700, 700);
-        mainCtx.lineWidth = 2;
-        mainCtx.strokeStyle = "black";
-        mainCtx.stroke();
-    }
-
 }
 
 // Populate placeholders on initial load

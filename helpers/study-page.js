@@ -1,7 +1,7 @@
 import { pageState, studyBackgroundState, timerState } from "./state.js";
 import { enableWakeLock, disableWakeLock } from "./wakelock.js";
 import { coursesArray } from "./projects-page.js";
-import { glowColorPalette, themeColors } from "./settings-page.js";
+import { glowColorPalette } from "./settings-page.js";
 import { db } from "./db.js";
 
 const glowShapeTypes = ["circle", "triangle", "square"];
@@ -12,6 +12,11 @@ let timerPageContent;
 let timerHTML;
 let timerClassSelect;
 let timerProjectSelect;
+
+// Logical (CSS-pixel) canvas size — kept separate from mainCanvas.width/height,
+// which are the physical pixel-buffer dimensions once scaled by devicePixelRatio.
+let canvasWidth = 0;
+let canvasHeight = 0;
 
 export function initStudyPage(options) {
     mainCanvas = options.mainCanvas;
@@ -39,16 +44,41 @@ export function initStudyPage(options) {
     // make sure the selects reflect that by staying locked.
     setSelectionLocked(timerState.running);
 
+    // The canvas is now sized responsively rather than fixed at 1400x700 —
+    // ResizeObserver catches window resizes, orientation changes, and layout
+    // shifts alike, and redraws whatever should currently be on screen.
+    const resizeObserver = new ResizeObserver(() => resizeMainCanvas());
+    resizeObserver.observe(mainCanvas);
+    resizeMainCanvas();
+
     updateTimerDisplay();
     updateStudyPageVisibility();
 
     setInterval(updateTimer, 250);
 }
 
+function resizeMainCanvas() {
+    const rect = mainCanvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+
+    canvasWidth = rect.width;
+    canvasHeight = rect.height;
+
+    mainCanvas.width = Math.round(canvasWidth * dpr);
+    mainCanvas.height = Math.round(canvasHeight * dpr);
+    mainCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    if (studyBackgroundState.running) {
+        drawStudyBackground();
+    } else {
+        drawNormalMainBackground();
+    }
+}
+
 export function drawNormalMainBackground() {
-    mainCtx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
-    mainCtx.fillStyle = themeColors.background;
-    mainCtx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+    // Idle state is a plain CSS background behind the (now transparent)
+    // canvas — this just clears any leftover glow-shape drawing.
+    mainCtx.clearRect(0, 0, canvasWidth, canvasHeight);
 }
 
 export function updateStudyPageVisibility() {
@@ -179,12 +209,11 @@ export function redrawStudyPageBackground() {
 
 function createGlowShape() {
     return {
-        x: Math.random() * mainCanvas.width,
-        y: mainCanvas.height + Math.random() * mainCanvas.height,
+        x: Math.random() * canvasWidth,
+        y: canvasHeight + Math.random() * canvasHeight,
         shape: glowShapeTypes[Math.floor(Math.random() * glowShapeTypes.length)],
-        radius: 35 + Math.random() * 95,
-        speed: 0.5 + Math.random() * 0.75,
-        blur: 14 + Math.random() * 22,
+        radius: 22 + Math.random() * 60,
+        speed: 0.4 + Math.random() * 0.6,
         color: glowColorPalette[Math.floor(Math.random() * glowColorPalette.length)],
         alpha: 0.28 + Math.random() * 0.28,
         rotation: Math.random() * Math.PI * 2,
@@ -192,85 +221,123 @@ function createGlowShape() {
     };
 }
 
-function drawGlowShape(shape) {
-    if (shape.shape === "circle") {
-        mainCtx.arc(shape.x, shape.y, shape.radius, 0, Math.PI * 2);
+// --- Glow sprite cache -----------------------------------------------
+// The old approach re-ran ctx.shadowBlur (very expensive) on every shape,
+// 3 times each, every single animation frame. That's fine for a couple
+// shapes but brutal at 40 shapes x 60fps, especially at high device pixel
+// ratios. Instead, each (shape type, color) combination — at most 9 —
+// is drawn ONCE onto an offscreen canvas with the blur baked in, and every
+// frame just stamps that pre-rendered bitmap wherever it needs to go.
+// Bitmap stamping (drawImage) is dramatically cheaper than re-blurring
+// vector paths every frame.
+
+const SPRITE_BASE_RADIUS = 64;
+const SPRITE_PADDING = 3.2; // extra room so the blur halo isn't clipped
+const glowSpriteCache = new Map();
+
+function traceShapePath(ctx, shapeType, cx, cy, radius) {
+    if (shapeType === "circle") {
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
         return;
     }
 
-    const sides = shape.shape === "triangle" ? 3 : 4;
+    const sides = shapeType === "triangle" ? 3 : 4;
 
     for (let i = 0; i <= sides; i++) {
-        const angle = shape.rotation + (i / sides) * Math.PI * 2;
-        const x = shape.x + Math.cos(angle) * shape.radius;
-        const y = shape.y + Math.sin(angle) * shape.radius;
+        const angle = (i / sides) * Math.PI * 2;
+        const x = cx + Math.cos(angle) * radius;
+        const y = cy + Math.sin(angle) * radius;
 
         if (i === 0) {
-            mainCtx.moveTo(x, y);
+            ctx.moveTo(x, y);
         } else {
-            mainCtx.lineTo(x, y);
+            ctx.lineTo(x, y);
         }
     }
 }
 
-function drawRoundedRect(x, y, width, height, radius) {
-    mainCtx.beginPath();
-    mainCtx.moveTo(x + radius, y);
-    mainCtx.lineTo(x + width - radius, y);
-    mainCtx.quadraticCurveTo(x + width, y, x + width, y + radius);
-    mainCtx.lineTo(x + width, y + height - radius);
-    mainCtx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-    mainCtx.lineTo(x + radius, y + height);
-    mainCtx.quadraticCurveTo(x, y + height, x, y + height - radius);
-    mainCtx.lineTo(x, y + radius);
-    mainCtx.quadraticCurveTo(x, y, x + radius, y);
-    mainCtx.closePath();
+function buildGlowSprite(shapeType, color) {
+    const spriteRadius = SPRITE_BASE_RADIUS * SPRITE_PADDING;
+    const size = Math.ceil(spriteRadius * 2);
+
+    const sprite = document.createElement("canvas");
+    sprite.width = size;
+    sprite.height = size;
+    const spriteCtx = sprite.getContext("2d");
+    const cx = size / 2;
+    const cy = size / 2;
+
+    spriteCtx.globalCompositeOperation = "lighter";
+
+    const drawLayer = (alpha, shadowBlur, lineWidth) => {
+        spriteCtx.save();
+        spriteCtx.globalAlpha = alpha;
+        spriteCtx.shadowBlur = shadowBlur;
+        spriteCtx.shadowColor = color;
+        spriteCtx.strokeStyle = color;
+        spriteCtx.lineWidth = lineWidth;
+        spriteCtx.beginPath();
+        traceShapePath(spriteCtx, shapeType, cx, cy, SPRITE_BASE_RADIUS);
+        spriteCtx.stroke();
+        spriteCtx.restore();
+    };
+
+    // A representative blur amount, baked once — this is the one visual
+    // trade-off versus the old per-shape random blur (10-26): every shape
+    // of a given type/color now shares the same halo softness. It's a
+    // subtle difference not worth the performance cost of keeping it random.
+    const blur = 18;
+    drawLayer(0.18, blur * 4, SPRITE_BASE_RADIUS * 0.4);
+    drawLayer(0.35, blur * 2.5, SPRITE_BASE_RADIUS * 0.22);
+    drawLayer(1.0, blur * 1.7, SPRITE_BASE_RADIUS * 0.05 + 2);
+
+    return sprite;
 }
 
-function drawTimerButtonBackplate() {
-    let width = 225;
-    let height = 65;
-    let x = (mainCanvas.width - width) / 2;
-    let y = 340;
+function getGlowSprite(shapeType, color) {
+    const key = shapeType + "|" + color;
+    let sprite = glowSpriteCache.get(key);
+
+    if (!sprite) {
+        sprite = buildGlowSprite(shapeType, color);
+        glowSpriteCache.set(key, sprite);
+    }
+
+    return sprite;
+}
+
+function drawGlowShapeSprite(shape) {
+    const sprite = getGlowSprite(shape.shape, shape.color);
+    const spriteRadius = SPRITE_BASE_RADIUS * SPRITE_PADDING;
+    const scale = shape.radius / SPRITE_BASE_RADIUS;
+    const drawSize = spriteRadius * 2 * scale;
 
     mainCtx.save();
-    mainCtx.globalCompositeOperation = "source-over";
-    mainCtx.fillStyle = "rgba(186, 180, 229, 0.7)";
-    mainCtx.shadowBlur = 24;
-    mainCtx.shadowColor = "rgba(226, 224, 241, 0.45)";
-    drawRoundedRect(x, y, width, height, 26);
-    mainCtx.fill();
-    mainCtx.restore();
-
-    mainCtx.save();
-    width = 235;
-    height = 75;
-    x = (mainCanvas.width - width) / 2;
-    y = 335;
-    mainCtx.fillStyle = "rgba(186, 180, 229, 0.4)";
-    drawRoundedRect(x, y, width, height, 26);
-    mainCtx.fill();
+    mainCtx.globalAlpha = shape.alpha;
+    mainCtx.translate(shape.x, shape.y);
+    mainCtx.rotate(shape.rotation);
+    mainCtx.drawImage(sprite, -drawSize / 2, -drawSize / 2, drawSize, drawSize);
     mainCtx.restore();
 }
 
 function resetGlowShapes() {
     studyBackgroundState.glowShapes = [];
 
-    for (let i = 0; i < 40; i++) {
+    const shapeCount = canvasWidth < 480 ? 22 : 40;
+    for (let i = 0; i < shapeCount; i++) {
         studyBackgroundState.glowShapes.push(createGlowShape());
     }
 }
 
 function drawStudyBackground() {
-    mainCtx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
-    mainCtx.fillStyle = "#030407";
-    mainCtx.fillRect(0, 0, mainCanvas.width, mainCanvas.height);
+    // The dark study-mode backdrop is a CSS background behind the canvas;
+    // the canvas itself only ever holds the glow shapes, drawn on a
+    // transparent buffer so they blend with each other, not the page.
+    mainCtx.clearRect(0, 0, canvasWidth, canvasHeight);
     mainCtx.globalCompositeOperation = "lighter";
 
     for (const shape of studyBackgroundState.glowShapes) {
-        drawGlowingOutline(shape, shape.alpha * 0.18, shape.blur * 4, 34);
-        drawGlowingOutline(shape, shape.alpha * 0.35, shape.blur * 2.5, 18);
-        drawGlowingOutline(shape, shape.alpha, shape.blur * 1.7, 3);
+        drawGlowShapeSprite(shape);
 
         if (!timerState.paused) {
             shape.y -= shape.speed;
@@ -279,25 +346,11 @@ function drawStudyBackground() {
 
         if (shape.y + shape.radius < 0) {
             Object.assign(shape, createGlowShape());
-            shape.y = mainCanvas.height + shape.radius;
+            shape.y = canvasHeight + shape.radius;
         }
     }
 
     mainCtx.globalCompositeOperation = "source-over";
-    drawTimerButtonBackplate();
-}
-
-function drawGlowingOutline(shape, alpha, shadowBlur, lineWidth) {
-    mainCtx.save();
-    mainCtx.globalAlpha = alpha;
-    mainCtx.shadowBlur = shadowBlur;
-    mainCtx.shadowColor = shape.color;
-    mainCtx.strokeStyle = shape.color;
-    mainCtx.lineWidth = lineWidth;
-    mainCtx.beginPath();
-    drawGlowShape(shape);
-    mainCtx.stroke();
-    mainCtx.restore();
 }
 
 function animateStudyBackground() {

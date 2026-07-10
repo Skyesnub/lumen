@@ -5,31 +5,16 @@ import {
     updateStudyPageVisibility
 } from "./helpers/study-page.js";
 import { updateDropdown, 
-        updateProjectsPageVisibility, 
-        drawLineSeparator 
+        updateProjectsPageVisibility
 } from "./helpers/projects-page.js";
 import { updateProgressPageVisibility } from "./helpers/progress-page.js";
-import { updateSettingsPageVisibility, themeColors } from "./helpers/settings-page.js";
+import { updateSettingsPageVisibility } from "./helpers/settings-page.js";
 import { pageNames, pageState } from "./helpers/state.js";
 import { disableWakeLock } from "./helpers/wakelock.js";
 import "./helpers/auth-page.js";
 
 const mainCanvas = document.getElementById("main");
 const mainCtx = mainCanvas.getContext("2d");
-const sidebarCanvas = document.getElementById("sidebar");
-const sidebarCtx = sidebarCanvas.getContext("2d");
-const topbarCanvas = document.getElementById("topbar");
-const topbarCtx = topbarCanvas.getContext("2d");
-const backerCanvas = document.getElementById("backer");
-const backerCtx = backerCanvas.getContext("2d");
-
-backerCtx.fillStyle = "#000000ff";
-sidebarCtx.fillStyle = themeColors.sidebar;
-topbarCtx.fillStyle = themeColors.topbar;
-
-backerCtx.fillRect(0, 0, backerCanvas.width, backerCanvas.height);
-sidebarCtx.fillRect(0, 0, sidebarCanvas.width, sidebarCanvas.height);
-topbarCtx.fillRect(0, 0, topbarCanvas.width, topbarCanvas.height);
 
 initStudyPage({
     mainCanvas: mainCanvas,
@@ -66,7 +51,6 @@ function updateSelectedButton() {
     updateProjectsPageVisibility();
     updateProgressPageVisibility();
     updateSettingsPageVisibility();
-    drawLineSeparator();
 }
 
 function goToPage(pageName) {

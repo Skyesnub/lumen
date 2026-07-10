@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Study Timer</title>
 
     <link rel="manifest" href="manifest.json">
@@ -18,6 +18,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Study Timer">
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Manrope:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="locations.css">
 
@@ -25,6 +29,10 @@
 <body class="logged-out">
     <div id="auth-page-content">
         <div class="auth-card">
+            <svg class="auth-logo" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 7v5l3.5 2"/>
+            </svg>
             <h1 id="auth-heading">Log in</h1>
             <input id="auth-email-input" type="email" placeholder="Email" autocomplete="username">
             <input id="auth-password-input" type="password" placeholder="Password" autocomplete="current-password">
@@ -35,106 +43,154 @@
     </div>
 
     <div id="app-shell">
-        <canvas id="backer" width="1600" height="800"></canvas>
-        <canvas id="main" width="1400" height="700"></canvas>
-        <canvas id="sidebar" width="199" height="700"></canvas>
-        <canvas id="topbar" width="1600" height="99"></canvas>
-
-        <div id="main-content">
+        <header id="top-bar">
             <h1 id="page-title"></h1>
             <p id="page-description"></p>
-        </div>
+        </header>
 
-        <div id="timer-page-content" class="hidden">
-            <div class="label-select-group">
-                <label for="timer-page-class-select">Select a class</label>
-                <select id="timer-page-class-select"></select>
-            </div>
-            <div class="label-select-group">
-                <label for="timer-page-project-select">Select a project</label>
-                <select id="timer-page-project-select"></select>
-            </div>
-            <div id="timer-controls">
-                <button id="pause-timer-button" class="timer-icon-button" aria-label="Pause timer" title="Pause">
-                    <img src="images/pause-icon.png" alt="">
-                </button>
-                <button id="finish-timer-button" class="timer-icon-button" aria-label="Finish timer" title="Finish">
-                    <img src="images/finish-icon.png" alt="">
-                </button>
-                <button id="return-timer-button" class="timer-icon-button" aria-label="Return to timer" title="Return">
-                    <img src="images/return-icon.png" alt="">
-                </button>
-            </div>
-            <h1 id="timer">00:00:00</h1>
-        </div>
-        <div id="projects-page-content" class="hidden">
-            <div id="projects-left-half">
+        <main id="page-container">
+            <section id="timer-page-content" class="page hidden">
+                <div id="timer-stage">
+                    <canvas id="main"></canvas>
+                    <div id="timer-stage-content">
+                        <div class="timer-selects">
+                            <div class="label-select-group">
+                                <label for="timer-page-class-select">Class</label>
+                                <select id="timer-page-class-select"></select>
+                            </div>
+                            <div class="label-select-group">
+                                <label for="timer-page-project-select">Project</label>
+                                <select id="timer-page-project-select"></select>
+                            </div>
+                        </div>
 
-                <p>Enter course name:</p>
-                <input id="course-input" type="text" placeholder="Enter course name">
-                <p id="no-repeat-course-warning" class="hidden">Please do not repeat course names.</p>
+                        <h1 id="timer">00:00:00</h1>
 
-                <p>Nest your project under:</p>
-                <select id="project-nest-input"></select>
+                        <div id="timer-controls">
+                            <button id="pause-timer-button" class="timer-icon-button" aria-label="Pause timer" title="Pause">
+                                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                    <rect x="6" y="5" width="4" height="14" rx="1.5"/>
+                                    <rect x="14" y="5" width="4" height="14" rx="1.5"/>
+                                </svg>
+                            </button>
+                            <button id="finish-timer-button" class="timer-icon-button" aria-label="Finish timer" title="Finish">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M5 13l4 4 10-10"/>
+                                </svg>
+                            </button>
+                            <button id="return-timer-button" class="timer-icon-button" aria-label="Return to timer" title="Return">
+                                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                    <path d="M7 5v14l12-7-12-7z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-                <p>Enter project name:</p>
-                <input id="project-input" type="text" placeholder="Enter project name">
-                <p id="no-repeat-warning" class="hidden">Please do not repeat project names.</p>
+            <section id="projects-page-content" class="page hidden">
+                <div class="card">
+                    <h2>Add</h2>
+                    <div class="label-select-group">
+                        <label for="course-input">Course name</label>
+                        <input id="course-input" type="text" placeholder="e.g. Organic Chemistry">
+                    </div>
+                    <p id="no-repeat-course-warning" class="hidden warning-text">Please don't repeat course names.</p>
 
-            </div>
-            <div id="projects-right-half">
+                    <div class="label-select-group">
+                        <label for="project-nest-input">Nest project in</label>
+                        <select id="project-nest-input"></select>
+                    </div>
 
-                <div class="dropdown-action-group">
-                    <select id="course-dropdown"></select>
-                    <button id="delete-course-button">Delete Course</button>
+                    <div class="label-select-group">
+                        <label for="project-input">Project name</label>
+                        <input id="project-input" type="text" placeholder="e.g. Midterm review">
+                    </div>
+                    <p id="no-repeat-warning" class="hidden warning-text">Please don't repeat project names.</p>
                 </div>
 
-                <div class="dropdown-action-group">
-                    <select id="project-dropdown"></select>
-                    <button id="delete-project-button">Delete Project</button>
+                <div class="card">
+                    <h2>Manage</h2>
+                    <div class="dropdown-action-group">
+                        <select id="course-dropdown"></select>
+                        <button id="delete-course-button">Delete</button>
+                    </div>
+                    <div class="dropdown-action-group">
+                        <select id="project-dropdown"></select>
+                        <button id="delete-project-button">Delete</button>
+                    </div>
                 </div>
+            </section>
 
-                <button id="hi">hi</button>
-            </div>
-        </div>
-        <div id="progress-page-content" class="hidden">
-            <div id="progress-left-half">
-                <div class="label-select-group">
-                    <label for="progress-page-class-select">Select a class</label>
-                    <select id="progress-page-class-select"></select>
+            <section id="progress-page-content" class="page hidden">
+                <div class="card">
+                    <div class="label-select-group">
+                        <label for="progress-page-class-select">Class</label>
+                        <select id="progress-page-class-select"></select>
+                    </div>
+                    <div class="label-select-group">
+                        <label for="progress-page-project-select">Project</label>
+                        <select id="progress-page-project-select"></select>
+                    </div>
                 </div>
-                <div class="label-select-group">
-                    <label for="progress-page-project-select">Select a project</label>
-                    <select id="progress-page-project-select"></select>
-                </div>
-            </div>
-            <div id="progress-right-half">
-                <div id="progress-stats">
+                <div class="card" id="progress-stats">
                     <p id="progress-stats-placeholder">Select a class or project to see its stats.</p>
                 </div>
-            </div>
-        </div>
-        <div id="settings-page-content" class="hidden">
-            <div class="label-select-group">
-                <label for="shape-color-select">Shape color</label>
-                <select id="shape-color-select"></select>
-            </div>
-            <div class="label-select-group">
-                <label for="theme-color-select">Theme color</label>
-                <select id="theme-color-select"></select>
-            </div>
-            <button id="sign-out-button">Sign out</button>
-        </div>
-        
+            </section>
 
-        <h1 id="optionsheader">Options</h1>
-        <!--Sidebar Buttons-->
-        <div>
-            <button id="timer-page-button" class="sidebar-button selected">Study Timer</button>
-            <button id="projects-page-button" class="sidebar-button">Projects</button>
-            <button id="progress-page-button" class="sidebar-button">Progress Summary</button>
-            <button id="settings-page-button" class="sidebar-button">Settings</button>
-        </div>
+            <section id="settings-page-content" class="page hidden">
+                <div class="card">
+                    <h2>Appearance</h2>
+                    <div class="label-select-group">
+                        <label for="shape-color-select">Shape color</label>
+                        <select id="shape-color-select"></select>
+                    </div>
+                    <div class="label-select-group">
+                        <label for="theme-color-select">Theme color</label>
+                        <select id="theme-color-select"></select>
+                    </div>
+                </div>
+                <div class="card">
+                    <h2>Account</h2>
+                    <button id="sign-out-button">Sign out</button>
+                </div>
+            </section>
+        </main>
+
+        <nav id="bottom-dock">
+            <button id="timer-page-button" class="nav-button selected">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9"/>
+                    <path d="M12 7v5l3.5 2"/>
+                </svg>
+                <span>Timer</span>
+            </button>
+            <button id="projects-page-button" class="nav-button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 3l9 5-9 5-9-5 9-5z"/>
+                    <path d="M3 13l9 5 9-5"/>
+                </svg>
+                <span>Projects</span>
+            </button>
+            <button id="progress-page-button" class="nav-button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M3 17l6-6 4 4 8-8"/>
+                    <path d="M15 7h6v6"/>
+                </svg>
+                <span>Progress</span>
+            </button>
+            <button id="settings-page-button" class="nav-button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M4 6h10M18 6h2"/>
+                    <circle cx="16" cy="6" r="2"/>
+                    <path d="M4 12h2M10 12h10"/>
+                    <circle cx="8" cy="12" r="2"/>
+                    <path d="M4 18h10M18 18h2"/>
+                    <circle cx="16" cy="18" r="2"/>
+                </svg>
+                <span>Settings</span>
+            </button>
+        </nav>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
