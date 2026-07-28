@@ -120,23 +120,35 @@ export function updateTimerPageClassDropdown() {
 }
 
 export function updateTimerPageProjectDropdown() {
+    const previouslySelected = timerProjectSelect.value;
+
     timerProjectSelect.innerHTML = ""; // Remove old options
 
     const placeholder = document.createElement("option");
     placeholder.value = "";
     placeholder.textContent = "Select a project";
-    placeholder.selected = true;
     placeholder.disabled = true;
     timerProjectSelect.appendChild(placeholder);
 
     const selectedCourse = coursesArray.find(course => course.id === timerClassSelect.value);
-    if (selectedCourse) {
-        for (const project of selectedCourse.projects) {
-            const option = document.createElement("option");
-            option.value = project.id;
-            option.textContent = project.name;
-            timerProjectSelect.appendChild(option);
-        }
+    const projects = selectedCourse ? selectedCourse.projects : [];
+
+    for (const project of projects) {
+        const option = document.createElement("option");
+        option.value = project.id;
+        option.textContent = project.name;
+        timerProjectSelect.appendChild(option);
+    }
+
+    // Restore the previous selection if it still belongs to the currently
+    // selected class. If the class itself just changed (this function also
+    // runs from timerClassSelect's own "change" listener), the old project
+    // won't be found in the new class's project list, so this naturally
+    // falls through to the placeholder — exactly what should happen there.
+    if (projects.some(project => project.id === previouslySelected)) {
+        timerProjectSelect.value = previouslySelected;
+    } else {
+        placeholder.selected = true;
     }
 }
 
