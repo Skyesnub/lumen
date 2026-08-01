@@ -387,27 +387,45 @@ body.study-mode #page-description {
     display: flex;
     flex-direction: column;
     gap: 2px;
+    min-width: 0;
 }
 
-.session-date {
+.session-title {
+    margin: 0;
     font-size: 14px;
     color: var(--ink);
     font-weight: 600;
+    overflow-wrap: anywhere;
 }
 
-.session-duration {
+.session-details {
     font-size: 13px;
     color: var(--ink-soft);
     font-family: var(--font-mono);
 }
 
-.session-delete-button {
+.session-actions {
+    display: flex;
     flex-shrink: 0;
+    gap: var(--space-1);
+}
+
+.session-rename-button,
+.session-delete-button {
     background: transparent;
-    color: #dc2626;
-    border: 1.5px solid #fecaca;
+    color: var(--accent-strong);
+    border: 1.5px solid var(--border);
     padding: 6px 12px;
     font-size: 13px;
+}
+
+.session-rename-button:hover {
+    background: var(--accent-soft);
+}
+
+.session-delete-button {
+    color: #dc2626;
+    border-color: #fecaca;
 }
 
 .session-delete-button:hover {

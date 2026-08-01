@@ -320,6 +320,28 @@ async function deleteSession(course, project, session) {
     renderSessionsList();
 }
 
+async function renameSession(project, session) {
+    const currentTitle = session.title || "Study session";
+    const newTitle = window.prompt("Name this study session:", currentTitle);
+    if (newTitle === null) return;
+
+    const title = newTitle.trim();
+    if (!title || title === currentTitle) return;
+
+    const { error } = await db
+        .from("sessions")
+        .update({ title })
+        .eq("id", session.id);
+
+    if (error) {
+        console.error(error);
+        return;
+    }
+
+    session.title = title;
+    renderSessionsList();
+}
+
 function formatSessionDate(isoString) {
     const date = new Date(isoString);
     return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
@@ -368,16 +390,24 @@ function renderSessionsList() {
         const info = document.createElement("div");
         info.classList.add("session-info");
 
-        const dateLine = document.createElement("span");
-        dateLine.classList.add("session-date");
-        dateLine.textContent = formatSessionDate(session.date);
+        const title = document.createElement("h3");
+        title.classList.add("session-title");
+        title.textContent = session.title || "Study session";
 
-        const durationLine = document.createElement("span");
-        durationLine.classList.add("session-duration");
-        durationLine.textContent = formatSessionDuration(session.duration);
+        const details = document.createElement("span");
+        details.classList.add("session-details");
+        details.textContent = `${formatSessionDate(session.date)}, ${formatSessionDuration(session.duration)}`;
 
-        info.appendChild(dateLine);
-        info.appendChild(durationLine);
+        info.appendChild(title);
+        info.appendChild(details);
+
+        const actions = document.createElement("div");
+        actions.classList.add("session-actions");
+
+        const renameButton = document.createElement("button");
+        renameButton.classList.add("session-rename-button");
+        renameButton.textContent = "Rename";
+        renameButton.addEventListener("click", () => renameSession(project, session));
 
         const deleteButton = document.createElement("button");
         deleteButton.classList.add("session-delete-button");
@@ -385,7 +415,9 @@ function renderSessionsList() {
         deleteButton.addEventListener("click", () => deleteSession(course, project, session));
 
         row.appendChild(info);
-        row.appendChild(deleteButton);
+        actions.appendChild(renameButton);
+        actions.appendChild(deleteButton);
+        row.appendChild(actions);
         sessionsList.appendChild(row);
     }
 }
@@ -415,7 +447,8 @@ function mapSessionFromDb(row) {
     return {
         id: row.id,
         date: row.date,
-        duration: row.duration
+        duration: row.duration,
+        title: row.title || "Study session"
     };
 }
 

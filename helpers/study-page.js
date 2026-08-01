@@ -208,7 +208,8 @@ async function logStudySession() {
     project.sessions.push({
         id: sessionData.id,
         date: sessionData.date,
-        duration: duration
+        duration: duration,
+        title: sessionData.title || "Study session"
     });
     project.totalStudyTime = newProjectTotal;
     course.totalStudyTime = newCourseTotal;
