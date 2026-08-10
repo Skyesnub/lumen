@@ -1,6 +1,6 @@
 {
-    "name": "Study Timer",
-    "short_name": "Study Timer",
+    "name": "Lumen",
+    "short_name": "Lumen",
     "description": "Track study sessions across courses and projects.",
     "start_url": "./index.html",
     "scope": "./",
