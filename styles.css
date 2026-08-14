@@ -217,3 +217,206 @@ select {
 .hidden {
     display: none !important;
 }
+
+/* ============================================================
+   Progress charts
+   ============================================================ */
+
+.progress-chart-section {
+    margin-top: var(--space-6);
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--border);
+}
+
+.progress-chart-title {
+    margin-bottom: var(--space-1);
+}
+
+.progress-chart-description {
+    margin-bottom: var(--space-4);
+    font-size: 14px;
+}
+
+.progress-chart-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+    margin-bottom: var(--space-3);
+}
+
+.progress-chart-controls-single {
+    justify-content: flex-end;
+}
+
+.chart-toggle,
+.chart-range-label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--ink-soft);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.chart-toggle input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: var(--accent);
+}
+
+.chart-range-select {
+    width: auto;
+    min-width: 142px;
+    padding: 7px 30px 7px 10px;
+    font-size: 13px;
+}
+
+.progress-chart-canvas {
+    width: 100%;
+    overflow: hidden;
+}
+
+.progress-chart {
+    display: block;
+    width: 100%;
+    min-width: 430px;
+    overflow: visible;
+}
+
+.chart-grid {
+    stroke: var(--border);
+    stroke-width: 1;
+}
+
+.chart-axis-text,
+.chart-axis-title,
+.chart-y-title {
+    fill: var(--ink-soft);
+    font-family: var(--font-body);
+}
+
+.chart-axis-text {
+    font-size: 11px;
+}
+
+.chart-axis-title,
+.chart-y-title {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.chart-bar {
+    fill: var(--accent);
+    transform-box: fill-box;
+    transform-origin: bottom;
+    animation: chart-bar-enter 550ms cubic-bezier(.2, .8, .3, 1) both;
+}
+
+.chart-bar:hover {
+    fill: var(--accent-strong);
+}
+
+.chart-week-highlight {
+    fill: var(--accent-soft);
+    opacity: .8;
+    animation: chart-fade-in 250ms ease both;
+}
+
+.chart-reference {
+    stroke-width: 2;
+    stroke-dasharray: 6 5;
+    animation: chart-dash-in 500ms ease both;
+}
+
+.chart-reference-mean { stroke: hsl(calc(var(--theme-hue) + 45), 60%, 47%); fill: hsl(calc(var(--theme-hue) + 45), 60%, 40%); }
+.chart-reference-median { stroke: hsl(calc(var(--theme-hue) - 35), 62%, 44%); fill: hsl(calc(var(--theme-hue) - 35), 62%, 36%); }
+.chart-reference-label { font-family: var(--font-body); font-size: 11px; font-weight: 700; }
+
+.chart-area {
+    fill: var(--accent-soft);
+    opacity: .72;
+    animation: chart-fade-in 550ms ease both;
+}
+
+.chart-line {
+    fill: none;
+    stroke: var(--accent);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 3;
+    stroke-dasharray: 1600;
+    stroke-dashoffset: 1600;
+    animation: chart-line-draw 900ms cubic-bezier(.4, 0, .2, 1) forwards;
+}
+
+.chart-end-dot {
+    fill: var(--accent);
+    stroke: var(--surface-raised);
+    stroke-width: 2;
+    animation: chart-fade-in 900ms ease both;
+}
+
+.progress-chart-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+}
+
+.progress-chart-metric {
+    min-width: 0;
+    border-radius: var(--radius-sm);
+    background: var(--accent-soft);
+    padding: var(--space-3);
+}
+
+.progress-chart-metric span,
+.progress-chart-metric strong {
+    display: block;
+}
+
+.progress-chart-metric span {
+    color: var(--ink-soft);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+.progress-chart-metric strong {
+    margin-top: 2px;
+    color: var(--accent-ink);
+    font-family: var(--font-display);
+    font-size: 14px;
+    overflow-wrap: anywhere;
+}
+
+.progress-chart-empty {
+    margin-top: var(--space-5);
+}
+
+@keyframes chart-bar-enter {
+    from { transform: scaleY(0); opacity: 0; }
+    to { transform: scaleY(1); opacity: 1; }
+}
+
+@keyframes chart-line-draw { to { stroke-dashoffset: 0; } }
+@keyframes chart-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes chart-dash-in { from { stroke-dashoffset: 30; opacity: 0; } to { stroke-dashoffset: 0; opacity: 1; } }
+
+@media (max-width: 520px) {
+    .progress-chart-canvas { overflow-x: auto; }
+    .progress-chart-controls-single { justify-content: flex-start; }
+    .progress-chart-metrics { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .chart-bar,
+    .chart-week-highlight,
+    .chart-reference,
+    .chart-area,
+    .chart-line,
+    .chart-end-dot { animation: none; }
+}

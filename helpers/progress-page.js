@@ -2,7 +2,6 @@ import { pageState } from "./state.js";
 import { coursesArray } from "./projects-page.js";
 
 const progressPageContent = document.getElementById("progress-page-content");
-
 const progressClassSelect = document.getElementById("progress-page-class-select");
 const progressProjectSelect = document.getElementById("progress-page-project-select");
 const progressStats = document.getElementById("progress-stats");
@@ -12,13 +11,10 @@ progressClassSelect.addEventListener("change", () => {
     updateProgressStats();
 });
 
-progressProjectSelect.addEventListener("change", () => {
-    updateProgressStats();
-});
+progressProjectSelect.addEventListener("change", updateProgressStats);
 
 export function updateProgressPageVisibility() {
     const onProgressPage = pageState.currentPage === "progress";
-
     progressPageContent.classList.toggle("hidden", !onProgressPage);
 
     if (onProgressPage) {
@@ -30,109 +26,312 @@ export function updateProgressPageVisibility() {
 
 export function updateProgressClassDropdown() {
     const previouslySelected = progressClassSelect.value;
-
-    progressClassSelect.innerHTML = ""; // Remove old options
-
-    const placeholder = document.createElement("option");
-    placeholder.value = "";
-    placeholder.textContent = "Select a class";
-    placeholder.disabled = true;
-    progressClassSelect.appendChild(placeholder);
+    progressClassSelect.innerHTML = "";
+    progressClassSelect.appendChild(createOption("", "Select a class", true));
 
     for (const course of coursesArray) {
-        const option = document.createElement("option");
-        option.value = course.id;
-        option.textContent = course.name;
-        progressClassSelect.appendChild(option);
+        progressClassSelect.appendChild(createOption(course.id, course.name));
     }
 
     if (coursesArray.some(course => course.id === previouslySelected)) {
         progressClassSelect.value = previouslySelected;
     } else {
-        placeholder.selected = true;
+        progressClassSelect.selectedIndex = 0;
     }
 }
 
 export function updateProgressProjectDropdown() {
-    progressProjectSelect.innerHTML = ""; // Remove old options
-
-    const placeholder = document.createElement("option");
-    placeholder.value = "";
-    placeholder.textContent = "Select a project";
-    placeholder.selected = true;
-    placeholder.disabled = true;
-    progressProjectSelect.appendChild(placeholder);
+    const previouslySelected = progressProjectSelect.value;
+    progressProjectSelect.innerHTML = "";
+    progressProjectSelect.appendChild(createOption("", "All projects", false));
 
     const selectedCourse = coursesArray.find(course => course.id === progressClassSelect.value);
-    if (selectedCourse) {
-        for (const project of selectedCourse.projects) {
-            const option = document.createElement("option");
-            option.value = project.id;
-            option.textContent = project.name;
-            progressProjectSelect.appendChild(option);
-        }
+    for (const project of selectedCourse?.projects || []) {
+        progressProjectSelect.appendChild(createOption(project.id, project.name));
+    }
+
+    if (selectedCourse?.projects.some(project => project.id === previouslySelected)) {
+        progressProjectSelect.value = previouslySelected;
     }
 }
 
 export function updateProgressStats() {
-    progressStats.innerHTML = ""; // Clear old stats
-
+    progressStats.innerHTML = "";
     const course = coursesArray.find(course => course.id === progressClassSelect.value);
 
     if (!course) {
-        const placeholder = document.createElement("p");
-        placeholder.id = "progress-stats-placeholder";
-        placeholder.textContent = "Select a class or project to see its stats.";
-        progressStats.appendChild(placeholder);
+        progressStats.appendChild(createText("p", "Select a class to see its progress.", "progress-stats-placeholder"));
         return;
     }
 
-    const project = course.projects.find(project => project.id === progressProjectSelect.value);
+    const project = course.projects.find(item => item.id === progressProjectSelect.value);
+    const sessions = (project ? project.sessions : course.projects.flatMap(item => item.sessions))
+        .filter(session => Number.isFinite(Number(session.duration)) && session.date)
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+    const totalTime = sessions.reduce((sum, session) => sum + Number(session.duration), 0);
 
-    const title = document.createElement("h2");
-    title.classList.add("progress-stats-title");
-    progressStats.appendChild(title);
+    progressStats.appendChild(createText("h2", project ? project.name : course.name, "progress-stats-title"));
+    addStatLine("Total study sessions:", sessions.length);
+    addStatLine("Total time studied:", formatDuration(totalTime));
+    if (!project) addStatLine("Number of projects:", course.projects.length);
 
-    if (project) {
-        title.textContent = project.name;
-
-        addStatLine("Total study sessions:", project.sessions.length);
-        addStatLine("Total time studied:", formatDuration(project.totalStudyTime));
+    if (!sessions.length) {
+        progressStats.appendChild(createText("p", "Log a study session to start building your progress graphs.", "progress-chart-empty"));
         return;
     }
 
-    title.textContent = course.name;
+    progressStats.appendChild(createSessionChart(sessions));
+    progressStats.appendChild(createCumulativeChart(sessions));
+}
 
-    const totalSessions = course.projects.reduce((sum, project) => sum + project.sessions.length, 0);
+function createSessionChart(sessions) {
+    const durations = sessions.map(session => Number(session.duration));
+    const mean = durations.reduce((sum, duration) => sum + duration, 0) / durations.length;
+    const sortedDurations = [...durations].sort((a, b) => a - b);
+    const middle = Math.floor(sortedDurations.length / 2);
+    const median = sortedDurations.length % 2 ? sortedDurations[middle] : (sortedDurations[middle - 1] + sortedDurations[middle]) / 2;
+    const bestWeek = getBestWeek(sessions);
 
-    addStatLine("Total study sessions:", totalSessions);
-    addStatLine("Total time studied:", formatDuration(course.totalStudyTime));
-    addStatLine("Number of projects:", course.projects.length);
+    const section = createChartSection("Session length", "Time spent in each study session");
+    const controls = document.createElement("div");
+    controls.className = "progress-chart-controls";
+    const canvas = document.createElement("div");
+    canvas.className = "progress-chart-canvas";
+
+    const options = { mean: false, median: false, bestWeek: false };
+    [
+        ["mean", "Show mean"],
+        ["median", "Show median"],
+        ["bestWeek", "Highlight best week"]
+    ].forEach(([key, label]) => {
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.addEventListener("change", () => {
+            options[key] = input.checked;
+            renderSessionBars(canvas, sessions, mean, median, bestWeek, options);
+        });
+        const optionLabel = document.createElement("label");
+        optionLabel.className = "chart-toggle";
+        optionLabel.append(input, document.createTextNode(label));
+        controls.appendChild(optionLabel);
+    });
+
+    const metrics = document.createElement("div");
+    metrics.className = "progress-chart-metrics";
+    addMetric(metrics, "Mean", formatDurationFriendly(mean));
+    addMetric(metrics, "Median", formatDurationFriendly(median));
+    addMetric(metrics, "Most focused week", `${formatWeek(bestWeek.start)} · ${formatDurationFriendly(bestWeek.total)}`);
+
+    section.append(controls, canvas, metrics);
+    renderSessionBars(canvas, sessions, mean, median, bestWeek, options);
+    return section;
+}
+
+function createCumulativeChart(sessions) {
+    const section = createChartSection("Study time over time", "Your cumulative study hours");
+    const controls = document.createElement("div");
+    controls.className = "progress-chart-controls progress-chart-controls-single";
+    const label = document.createElement("label");
+    label.className = "chart-range-label";
+    label.textContent = "End timeline at";
+    const select = document.createElement("select");
+    select.className = "chart-range-select";
+    select.append(createOption("last", "Last study session"), createOption("now", "Today"));
+    label.appendChild(select);
+    controls.appendChild(label);
+
+    const canvas = document.createElement("div");
+    canvas.className = "progress-chart-canvas";
+    select.addEventListener("change", () => renderCumulativeLine(canvas, sessions, select.value));
+    section.append(controls, canvas);
+    renderCumulativeLine(canvas, sessions, select.value);
+    return section;
+}
+
+function renderSessionBars(container, sessions, mean, median, bestWeek, options) {
+    const width = 700;
+    const height = 270;
+    const pad = { top: 18, right: 20, bottom: 42, left: 56 };
+    const plotWidth = width - pad.left - pad.right;
+    const plotHeight = height - pad.top - pad.bottom;
+    const max = Math.max(...sessions.map(item => Number(item.duration)), mean, median, 60) * 1.15;
+    const y = value => pad.top + plotHeight - (value / max) * plotHeight;
+    const step = plotWidth / sessions.length;
+    const barWidth = Math.max(3, Math.min(34, step * 0.68));
+    const bestStart = bestWeek.start.getTime();
+    const bestEnd = bestStart + 7 * 86400000;
+    let bars = "";
+    let highlight = "";
+    let firstHighlighted = Infinity;
+    let lastHighlighted = -Infinity;
+
+    sessions.forEach((session, index) => {
+        const date = localDate(session.date).getTime();
+        if (date >= bestStart && date < bestEnd) {
+            firstHighlighted = Math.min(firstHighlighted, index);
+            lastHighlighted = Math.max(lastHighlighted, index);
+        }
+        const barHeight = Math.max(1, pad.top + plotHeight - y(Number(session.duration)));
+        const x = pad.left + index * step + (step - barWidth) / 2;
+        bars += `<rect class="chart-bar" x="${x.toFixed(1)}" y="${y(Number(session.duration)).toFixed(1)}" width="${barWidth.toFixed(1)}" height="${barHeight.toFixed(1)}" rx="3"><title>Session ${index + 1}: ${escapeHtml(formatDurationFriendly(Number(session.duration)))}</title></rect>`;
+    });
+    if (options.bestWeek && lastHighlighted >= 0) {
+        const x = pad.left + firstHighlighted * step;
+        const highlightedWidth = (lastHighlighted - firstHighlighted + 1) * step;
+        highlight = `<rect class="chart-week-highlight" x="${x.toFixed(1)}" y="${pad.top}" width="${highlightedWidth.toFixed(1)}" height="${plotHeight}" rx="5"/>`;
+    }
+
+    const grid = gridLines(pad, plotWidth, plotHeight, max, y, "minutes");
+    const lines = [
+        options.mean && chartReferenceLine(mean, "mean", "Mean", pad, plotWidth, y),
+        options.median && chartReferenceLine(median, "median", "Median", pad, plotWidth, y)
+    ].filter(Boolean).join("");
+    const labelStep = Math.max(1, Math.ceil(sessions.length / 6));
+    const xLabels = sessions.map((_, index) => index % labelStep === 0 || index === sessions.length - 1
+        ? `<text class="chart-axis-text" x="${(pad.left + index * step + step / 2).toFixed(1)}" y="${height - 16}" text-anchor="middle">${index + 1}</text>` : "").join("");
+
+    container.innerHTML = chartSvg(width, height, `${grid}${highlight}${bars}${lines}<text class="chart-axis-title" x="${pad.left + plotWidth / 2}" y="${height - 2}" text-anchor="middle">Study sessions</text>${xLabels}`);
+}
+
+function renderCumulativeLine(container, sessions, endMode) {
+    const width = 700;
+    const height = 270;
+    const pad = { top: 18, right: 20, bottom: 42, left: 56 };
+    const plotWidth = width - pad.left - pad.right;
+    const plotHeight = height - pad.top - pad.bottom;
+    const start = startOfDay(localDate(sessions[0].date));
+    const lastSession = startOfDay(localDate(sessions[sessions.length - 1].date));
+    const today = startOfDay(new Date());
+    const end = endMode === "now" && today > lastSession ? today : lastSession;
+    const span = Math.max(1, end - start);
+    const points = [];
+    let total = 0;
+    sessions.forEach(session => {
+        total += Number(session.duration);
+        points.push({ date: startOfDay(localDate(session.date)), total });
+    });
+    const max = Math.max(total, 60) * 1.12;
+    const x = date => pad.left + ((date - start) / span) * plotWidth;
+    const y = value => pad.top + plotHeight - (value / max) * plotHeight;
+    const path = [`M ${x(start).toFixed(1)} ${y(0).toFixed(1)}`];
+    points.forEach(point => path.push(`L ${x(point.date).toFixed(1)} ${y(point.total).toFixed(1)}`));
+    if (end > lastSession) path.push(`L ${x(end).toFixed(1)} ${y(total).toFixed(1)}`);
+    const grid = gridLines(pad, plotWidth, plotHeight, max, y, "hours");
+    const ticks = dateTicks(start, end, 4).map(date => `<text class="chart-axis-text" x="${x(date).toFixed(1)}" y="${height - 16}" text-anchor="middle">${formatShortDate(date)}</text>`).join("");
+    const area = `${path.join(" ")} L ${x(end).toFixed(1)} ${y(0).toFixed(1)} L ${x(start).toFixed(1)} ${y(0).toFixed(1)} Z`;
+    container.innerHTML = chartSvg(width, height, `${grid}<path class="chart-area" d="${area}"/><path class="chart-line" d="${path.join(" ")}"/><circle class="chart-end-dot" cx="${x(end).toFixed(1)}" cy="${y(total).toFixed(1)}" r="4"><title>Total: ${escapeHtml(formatDurationFriendly(total))}</title></circle><text class="chart-axis-title" x="${pad.left + plotWidth / 2}" y="${height - 2}" text-anchor="middle">Date</text>${ticks}`);
+}
+
+function chartSvg(width, height, content) {
+    return `<svg class="progress-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Study progress chart"><text class="chart-y-title" x="16" y="${height / 2}" text-anchor="middle" transform="rotate(-90 16 ${height / 2})">Time</text>${content}</svg>`;
+}
+
+function gridLines(pad, plotWidth, plotHeight, max, y, unit) {
+    return Array.from({ length: 5 }, (_, index) => {
+        const value = max * index / 4;
+        const yPosition = y(value);
+        const label = unit === "hours" ? `${(value / 3600).toFixed(value >= 36000 ? 0 : 1)}h` : formatAxisDuration(value);
+        return `<line class="chart-grid" x1="${pad.left}" x2="${pad.left + plotWidth}" y1="${yPosition.toFixed(1)}" y2="${yPosition.toFixed(1)}"/><text class="chart-axis-text" x="${pad.left - 9}" y="${(yPosition + 4).toFixed(1)}" text-anchor="end">${label}</text>`;
+    }).join("");
+}
+
+function chartReferenceLine(value, type, label, pad, plotWidth, y) {
+    const yPosition = y(value).toFixed(1);
+    return `<line class="chart-reference chart-reference-${type}" x1="${pad.left}" x2="${pad.left + plotWidth}" y1="${yPosition}" y2="${yPosition}"/><text class="chart-reference-label chart-reference-${type}" x="${pad.left + plotWidth - 3}" y="${Number(yPosition) - 5}" text-anchor="end">${label}</text>`;
+}
+
+function getBestWeek(sessions) {
+    const weeks = new Map();
+    sessions.forEach(session => {
+        const start = startOfWeek(localDate(session.date));
+        const key = start.getTime();
+        weeks.set(key, (weeks.get(key) || 0) + Number(session.duration));
+    });
+    let best = { start: startOfWeek(localDate(sessions[0].date)), total: 0 };
+    weeks.forEach((total, key) => {
+        if (total > best.total) best = { start: new Date(Number(key)), total };
+    });
+    return best;
+}
+
+function createChartSection(title, description) {
+    const section = document.createElement("section");
+    section.className = "progress-chart-section";
+    const heading = createText("h3", title, "progress-chart-title");
+    const intro = createText("p", description, "progress-chart-description");
+    section.append(heading, intro);
+    return section;
+}
+
+function addMetric(container, label, value) {
+    const metric = document.createElement("div");
+    metric.className = "progress-chart-metric";
+    metric.append(createText("span", label), createText("strong", value));
+    container.appendChild(metric);
 }
 
 function addStatLine(label, value) {
     const line = document.createElement("p");
-    line.classList.add("progress-stat-line");
-
-    const labelSpan = document.createElement("span");
-    labelSpan.classList.add("progress-stat-label");
-    labelSpan.textContent = label;
-
-    line.appendChild(labelSpan);
-    line.append(" " + value);
-
+    line.className = "progress-stat-line";
+    line.append(createText("span", label, "progress-stat-label"), document.createTextNode(` ${value}`));
     progressStats.appendChild(line);
 }
 
-function formatDuration(totalSeconds) {
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds / 60) % 60);
-    const seconds = Math.floor(totalSeconds % 60);
-
-    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+function createText(tag, value, className = "") {
+    const element = document.createElement(tag);
+    element.textContent = value;
+    if (className) element.className = className;
+    return element;
 }
 
-// Populate placeholders on initial load
+function createOption(value, text, disabled = false) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = text;
+    option.disabled = disabled;
+    return option;
+}
+
+function localDate(value) {
+    const date = new Date(value);
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function startOfDay(date) { return new Date(date.getFullYear(), date.getMonth(), date.getDate()); }
+function startOfWeek(date) {
+    const result = startOfDay(date);
+    result.setDate(result.getDate() - ((result.getDay() + 6) % 7));
+    return result;
+}
+function dateTicks(start, end, count) {
+    const span = end - start;
+    return Array.from({ length: count + 1 }, (_, index) => new Date(start.getTime() + span * index / count));
+}
+function formatAxisDuration(seconds) { return seconds >= 3600 ? `${(seconds / 3600).toFixed(1)}h` : `${Math.round(seconds / 60)}m`; }
+function formatDurationFriendly(seconds) {
+    let hours = Math.floor(seconds / 3600);
+    let minutes = Math.round((seconds % 3600) / 60);
+    if (minutes === 60) {
+        hours += 1;
+        minutes = 0;
+    }
+    if (hours) return `${hours}h ${minutes}m`;
+    return minutes ? `${minutes}m` : `${Math.round(seconds)}s`;
+}
+function formatDuration(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds / 60) % 60);
+    const remainder = Math.floor(seconds % 60);
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
+}
+function formatWeek(start) {
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    return `${start.toLocaleDateString(undefined, { month: "short", day: "numeric" })}–${end.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`;
+}
+function formatShortDate(date) { return date.toLocaleDateString(undefined, { month: "short", day: "numeric" }); }
+function escapeHtml(value) { return String(value).replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[character]); }
+
 updateProgressClassDropdown();
 updateProgressProjectDropdown();
 updateProgressStats();
