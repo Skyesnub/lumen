@@ -151,7 +151,7 @@ function createCumulativeChart(sessions) {
 function renderSessionBars(container, sessions, mean, median, bestWeek, options) {
     const width = 700;
     const height = 270;
-    const pad = { top: 18, right: 20, bottom: 42, left: 56 };
+    const pad = { top: 24, right: 44, bottom: 48, left: 64 };
     const plotWidth = width - pad.left - pad.right;
     const plotHeight = height - pad.top - pad.bottom;
     const max = Math.max(...sessions.map(item => Number(item.duration)), mean, median, 60) * 1.15;
@@ -173,7 +173,8 @@ function renderSessionBars(container, sessions, mean, median, bestWeek, options)
         }
         const barHeight = Math.max(1, pad.top + plotHeight - y(Number(session.duration)));
         const x = pad.left + index * step + (step - barWidth) / 2;
-        bars += `<rect class="chart-bar" x="${x.toFixed(1)}" y="${y(Number(session.duration)).toFixed(1)}" width="${barWidth.toFixed(1)}" height="${barHeight.toFixed(1)}" rx="3"><title>Session ${index + 1}: ${escapeHtml(formatDurationFriendly(Number(session.duration)))}</title></rect>`;
+        const name = session.title || `Study session ${index + 1}`;
+        bars += `<rect class="chart-bar" x="${x.toFixed(1)}" y="${y(Number(session.duration)).toFixed(1)}" width="${barWidth.toFixed(1)}" height="${barHeight.toFixed(1)}" rx="3" tabindex="0" data-tooltip="${escapeHtml(`${name} · ${formatLongDate(localDate(session.date))} · ${formatDurationFriendly(Number(session.duration))}`)}"/>`;
     });
     if (options.bestWeek && lastHighlighted >= 0) {
         const x = pad.left + firstHighlighted * step;
@@ -191,12 +192,13 @@ function renderSessionBars(container, sessions, mean, median, bestWeek, options)
         ? `<text class="chart-axis-text" x="${(pad.left + index * step + step / 2).toFixed(1)}" y="${height - 16}" text-anchor="middle">${index + 1}</text>` : "").join("");
 
     container.innerHTML = chartSvg(width, height, `${grid}${highlight}${bars}${lines}<text class="chart-axis-title" x="${pad.left + plotWidth / 2}" y="${height - 2}" text-anchor="middle">Study sessions</text>${xLabels}`);
+    attachChartTooltip(container);
 }
 
 function renderCumulativeLine(container, sessions, endMode) {
     const width = 700;
     const height = 270;
-    const pad = { top: 18, right: 20, bottom: 42, left: 56 };
+    const pad = { top: 24, right: 44, bottom: 48, left: 64 };
     const plotWidth = width - pad.left - pad.right;
     const plotHeight = height - pad.top - pad.bottom;
     const start = startOfDay(localDate(sessions[0].date));
@@ -219,7 +221,41 @@ function renderCumulativeLine(container, sessions, endMode) {
     const grid = gridLines(pad, plotWidth, plotHeight, max, y, "hours");
     const ticks = dateTicks(start, end, 4).map(date => `<text class="chart-axis-text" x="${x(date).toFixed(1)}" y="${height - 16}" text-anchor="middle">${formatShortDate(date)}</text>`).join("");
     const area = `${path.join(" ")} L ${x(end).toFixed(1)} ${y(0).toFixed(1)} L ${x(start).toFixed(1)} ${y(0).toFixed(1)} Z`;
-    container.innerHTML = chartSvg(width, height, `${grid}<path class="chart-area" d="${area}"/><path class="chart-line" d="${path.join(" ")}"/><circle class="chart-end-dot" cx="${x(end).toFixed(1)}" cy="${y(total).toFixed(1)}" r="4"><title>Total: ${escapeHtml(formatDurationFriendly(total))}</title></circle><text class="chart-axis-title" x="${pad.left + plotWidth / 2}" y="${height - 2}" text-anchor="middle">Date</text>${ticks}`);
+    const pointMarkers = points.map(point => `<circle class="chart-point" cx="${x(point.date).toFixed(1)}" cy="${y(point.total).toFixed(1)}" r="5" tabindex="0" data-tooltip="${escapeHtml(`${formatLongDate(point.date)} — ${formatStudyHours(point.total)} studied`)}"/>`).join("");
+    const endpointTooltip = `${formatLongDate(end)} — ${formatStudyHours(total)} studied`;
+    container.innerHTML = chartSvg(width, height, `${grid}<path class="chart-area" d="${area}"/><path class="chart-line" d="${path.join(" ")}"/>${pointMarkers}<circle class="chart-end-dot" cx="${x(end).toFixed(1)}" cy="${y(total).toFixed(1)}" r="4" tabindex="0" data-tooltip="${escapeHtml(endpointTooltip)}"/><text class="chart-axis-title" x="${pad.left + plotWidth / 2}" y="${height - 2}" text-anchor="middle">Date</text>${ticks}`);
+    attachChartTooltip(container);
+}
+
+function attachChartTooltip(container) {
+    const tooltip = document.createElement("div");
+    tooltip.className = "progress-chart-tooltip";
+    tooltip.setAttribute("role", "status");
+    container.appendChild(tooltip);
+
+    const hide = () => tooltip.classList.remove("visible");
+    const show = (target, clientX, clientY) => {
+        const message = target?.getAttribute("data-tooltip");
+        if (!message) return hide();
+        tooltip.textContent = message;
+        const rect = container.getBoundingClientRect();
+        tooltip.classList.add("visible");
+        const halfWidth = tooltip.offsetWidth / 2;
+        const x = Math.max(halfWidth + 8, Math.min(clientX - rect.left, rect.width - halfWidth - 8));
+        tooltip.style.left = `${x}px`;
+        tooltip.style.top = `${clientY - rect.top}px`;
+        tooltip.classList.toggle("below", clientY - rect.top < 54);
+    };
+
+    container.addEventListener("mousemove", event => show(event.target.closest?.("[data-tooltip]"), event.clientX, event.clientY));
+    container.addEventListener("mouseleave", hide);
+    container.addEventListener("focusin", event => {
+        const target = event.target.closest?.("[data-tooltip]");
+        if (!target) return;
+        const rect = target.getBoundingClientRect();
+        show(target, rect.left + rect.width / 2, rect.top);
+    });
+    container.addEventListener("focusout", hide);
 }
 
 function chartSvg(width, height, content) {
@@ -330,6 +366,11 @@ function formatWeek(start) {
     return `${start.toLocaleDateString(undefined, { month: "short", day: "numeric" })}–${end.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`;
 }
 function formatShortDate(date) { return date.toLocaleDateString(undefined, { month: "short", day: "numeric" }); }
+function formatLongDate(date) { return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }); }
+function formatStudyHours(seconds) {
+    const hours = seconds / 3600;
+    return `${hours.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${hours === 1 ? "hour" : "hours"}`;
+}
 function escapeHtml(value) { return String(value).replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[character]); }
 
 updateProgressClassDropdown();

@@ -274,6 +274,7 @@ select {
 }
 
 .progress-chart-canvas {
+    position: relative;
     width: 100%;
     overflow: hidden;
 }
@@ -309,6 +310,7 @@ select {
 
 .chart-bar {
     fill: var(--accent);
+    cursor: pointer;
     transform-box: fill-box;
     transform-origin: bottom;
     animation: chart-bar-enter 550ms cubic-bezier(.2, .8, .3, 1) both;
@@ -356,6 +358,44 @@ select {
     stroke: var(--surface-raised);
     stroke-width: 2;
     animation: chart-fade-in 900ms ease both;
+}
+
+.chart-point {
+    fill: var(--surface-raised);
+    stroke: var(--accent);
+    stroke-width: 2;
+    cursor: pointer;
+    transition: r 0.15s ease, fill 0.15s ease;
+}
+
+.chart-point:hover {
+    fill: var(--accent);
+    r: 7;
+}
+
+.progress-chart-tooltip {
+    position: absolute;
+    z-index: 2;
+    max-width: min(250px, calc(100% - 16px));
+    padding: 5px 8px;
+    border-radius: 7px;
+    background: var(--ink);
+    color: var(--surface-raised);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.35;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, calc(-100% - 10px));
+    transition: opacity 0.12s ease;
+}
+
+.progress-chart-tooltip.visible {
+    opacity: 1;
+}
+
+.progress-chart-tooltip.below {
+    transform: translate(-50%, 10px);
 }
 
 .progress-chart-metrics {
