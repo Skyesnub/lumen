@@ -85,20 +85,56 @@ export function updateProgressStats() {
 }
 
 function createSessionChart(sessions) {
-    const durations = sessions.map(session => Number(session.duration));
-    const mean = durations.reduce((sum, duration) => sum + duration, 0) / durations.length;
-    const sortedDurations = [...durations].sort((a, b) => a - b);
-    const middle = Math.floor(sortedDurations.length / 2);
-    const median = sortedDurations.length % 2 ? sortedDurations[middle] : (sortedDurations[middle - 1] + sortedDurations[middle]) / 2;
     const bestWeek = getBestWeek(sessions);
 
     const section = createChartSection("Session length", "Time spent in each study session");
+    const chartTitle = section.querySelector("h3");
+    const chartDescription = section.querySelector("p");
     const controls = document.createElement("div");
     controls.className = "progress-chart-controls";
     const canvas = document.createElement("div");
     canvas.className = "progress-chart-canvas";
 
-    const options = { mean: false, median: false, bestWeek: false };
+    const options = { mean: false, median: false, bestWeek: false, view: "session", includeEmptyDays: false };
+    const viewLabel = document.createElement("label");
+    viewLabel.className = "chart-range-label";
+    viewLabel.textContent = "View";
+    const viewSelect = document.createElement("select");
+    viewSelect.className = "chart-range-select";
+    viewSelect.append(createOption("session", "Per session"), createOption("day", "Per day"));
+    viewLabel.appendChild(viewSelect);
+    controls.appendChild(viewLabel);
+
+    const emptyDaysInput = document.createElement("input");
+    emptyDaysInput.type = "checkbox";
+    const emptyDaysLabel = document.createElement("label");
+    emptyDaysLabel.className = "chart-toggle hidden";
+    emptyDaysLabel.append(emptyDaysInput, document.createTextNode("Include days without study"));
+    controls.appendChild(emptyDaysLabel);
+
+    const metrics = document.createElement("div");
+    metrics.className = "progress-chart-metrics";
+    const render = () => {
+        const points = options.view === "day" ? groupSessionsByDay(sessions, options.includeEmptyDays) : sessions;
+        const { mean, median } = getDurationStats(points);
+        chartTitle.textContent = options.view === "day" ? "Daily study time" : "Session length";
+        chartDescription.textContent = options.view === "day" ? "Total study time for each day" : "Time spent in each study session";
+        renderSessionBars(canvas, points, mean, median, bestWeek, options);
+        metrics.innerHTML = "";
+        addMetric(metrics, "Mean", formatDurationFriendly(mean));
+        addMetric(metrics, "Median", formatDurationFriendly(median));
+        addMetric(metrics, "Most focused week", `${formatWeek(bestWeek.start)} · ${formatDurationFriendly(bestWeek.total)}`);
+    };
+
+    viewSelect.addEventListener("change", () => {
+        options.view = viewSelect.value;
+        emptyDaysLabel.classList.toggle("hidden", options.view !== "day");
+        render();
+    });
+    emptyDaysInput.addEventListener("change", () => {
+        options.includeEmptyDays = emptyDaysInput.checked;
+        render();
+    });
     [
         ["mean", "Show mean"],
         ["median", "Show median"],
@@ -108,7 +144,7 @@ function createSessionChart(sessions) {
         input.type = "checkbox";
         input.addEventListener("change", () => {
             options[key] = input.checked;
-            renderSessionBars(canvas, sessions, mean, median, bestWeek, options);
+            render();
         });
         const optionLabel = document.createElement("label");
         optionLabel.className = "chart-toggle";
@@ -116,14 +152,8 @@ function createSessionChart(sessions) {
         controls.appendChild(optionLabel);
     });
 
-    const metrics = document.createElement("div");
-    metrics.className = "progress-chart-metrics";
-    addMetric(metrics, "Mean", formatDurationFriendly(mean));
-    addMetric(metrics, "Median", formatDurationFriendly(median));
-    addMetric(metrics, "Most focused week", `${formatWeek(bestWeek.start)} · ${formatDurationFriendly(bestWeek.total)}`);
-
     section.append(controls, canvas, metrics);
-    renderSessionBars(canvas, sessions, mean, median, bestWeek, options);
+    render();
     return section;
 }
 
@@ -148,15 +178,15 @@ function createCumulativeChart(sessions) {
     return section;
 }
 
-function renderSessionBars(container, sessions, mean, median, bestWeek, options) {
+function renderSessionBars(container, points, mean, median, bestWeek, options) {
     const width = 700;
     const height = 270;
     const pad = { top: 24, right: 44, bottom: 48, left: 64 };
     const plotWidth = width - pad.left - pad.right;
     const plotHeight = height - pad.top - pad.bottom;
-    const max = Math.max(...sessions.map(item => Number(item.duration)), mean, median, 60) * 1.15;
+    const max = Math.max(...points.map(item => Number(item.duration)), mean, median, 60) * 1.15;
     const y = value => pad.top + plotHeight - (value / max) * plotHeight;
-    const step = plotWidth / sessions.length;
+    const step = plotWidth / points.length;
     const barWidth = Math.max(3, Math.min(34, step * 0.68));
     const bestStart = bestWeek.start.getTime();
     const bestEnd = bestStart + 7 * 86400000;
@@ -165,7 +195,7 @@ function renderSessionBars(container, sessions, mean, median, bestWeek, options)
     let firstHighlighted = Infinity;
     let lastHighlighted = -Infinity;
 
-    sessions.forEach((session, index) => {
+    points.forEach((session, index) => {
         const date = localDate(session.date).getTime();
         if (date >= bestStart && date < bestEnd) {
             firstHighlighted = Math.min(firstHighlighted, index);
@@ -173,7 +203,7 @@ function renderSessionBars(container, sessions, mean, median, bestWeek, options)
         }
         const barHeight = Math.max(1, pad.top + plotHeight - y(Number(session.duration)));
         const x = pad.left + index * step + (step - barWidth) / 2;
-        const name = session.title || `Study session ${index + 1}`;
+        const name = options.view === "day" ? (session.title || "Daily study total") : (session.title || `Study session ${index + 1}`);
         bars += `<rect class="chart-bar" x="${x.toFixed(1)}" y="${y(Number(session.duration)).toFixed(1)}" width="${barWidth.toFixed(1)}" height="${barHeight.toFixed(1)}" rx="3" tabindex="0" data-tooltip="${escapeHtml(`${name} · ${formatLongDate(localDate(session.date))} · ${formatDurationFriendly(Number(session.duration))}`)}"/>`;
     });
     if (options.bestWeek && lastHighlighted >= 0) {
@@ -187,11 +217,12 @@ function renderSessionBars(container, sessions, mean, median, bestWeek, options)
         options.mean && chartReferenceLine(mean, "mean", "Mean", pad, plotWidth, y),
         options.median && chartReferenceLine(median, "median", "Median", pad, plotWidth, y)
     ].filter(Boolean).join("");
-    const labelStep = Math.max(1, Math.ceil(sessions.length / 6));
-    const xLabels = sessions.map((_, index) => index % labelStep === 0 || index === sessions.length - 1
-        ? `<text class="chart-axis-text" x="${(pad.left + index * step + step / 2).toFixed(1)}" y="${height - 16}" text-anchor="middle">${index + 1}</text>` : "").join("");
+    const labelStep = Math.max(1, Math.ceil(points.length / 6));
+    const xLabels = points.map((point, index) => index % labelStep === 0 || index === points.length - 1
+        ? `<text class="chart-axis-text" x="${(pad.left + index * step + step / 2).toFixed(1)}" y="${height - 16}" text-anchor="middle">${options.view === "day" ? formatShortDate(localDate(point.date)) : index + 1}</text>` : "").join("");
 
-    container.innerHTML = chartSvg(width, height, `${grid}${highlight}${bars}${lines}<text class="chart-axis-title" x="${pad.left + plotWidth / 2}" y="${height - 2}" text-anchor="middle">Study sessions</text>${xLabels}`);
+    const xAxisTitle = options.view === "day" ? "Study days" : "Study sessions";
+    container.innerHTML = chartSvg(width, height, `${grid}${highlight}${bars}${lines}<text class="chart-axis-title" x="${pad.left + plotWidth / 2}" y="${height - 2}" text-anchor="middle">${xAxisTitle}</text>${xLabels}`);
     attachChartTooltip(container);
 }
 
@@ -288,6 +319,41 @@ function getBestWeek(sessions) {
         if (total > best.total) best = { start: new Date(Number(key)), total };
     });
     return best;
+}
+
+function groupSessionsByDay(sessions, includeEmptyDays = false) {
+    const days = new Map();
+    sessions.forEach(session => {
+        const date = localDate(session.date);
+        const key = date.getTime();
+        const existing = days.get(key);
+        if (existing) {
+            existing.duration += Number(session.duration);
+        } else {
+            days.set(key, { date: date.toISOString(), duration: Number(session.duration), title: "Daily study total" });
+        }
+    });
+    const groupedDays = [...days.values()].sort((a, b) => new Date(a.date) - new Date(b.date));
+    if (!includeEmptyDays || groupedDays.length < 2) return groupedDays;
+
+    const allDays = [];
+    const end = localDate(groupedDays[groupedDays.length - 1].date);
+    for (let date = localDate(groupedDays[0].date); date <= end; date.setDate(date.getDate() + 1)) {
+        const key = date.getTime();
+        allDays.push(days.get(key) || { date: new Date(date).toISOString(), duration: 0, title: "No study recorded" });
+    }
+    return allDays;
+}
+
+function getDurationStats(items) {
+    const durations = items.map(item => Number(item.duration));
+    const mean = durations.reduce((sum, duration) => sum + duration, 0) / durations.length;
+    const sortedDurations = [...durations].sort((a, b) => a - b);
+    const middle = Math.floor(sortedDurations.length / 2);
+    const median = sortedDurations.length % 2
+        ? sortedDurations[middle]
+        : (sortedDurations[middle - 1] + sortedDurations[middle]) / 2;
+    return { mean, median };
 }
 
 function createChartSection(title, description) {
