@@ -4,14 +4,20 @@ import { coursesArray } from "./projects-page.js";
 const progressPageContent = document.getElementById("progress-page-content");
 const progressClassSelect = document.getElementById("progress-page-class-select");
 const progressProjectSelect = document.getElementById("progress-page-project-select");
+const progressDateFilters = document.getElementById("progress-date-filters");
+const progressStartDateInput = document.getElementById("progress-page-start-date");
+const progressEndDateInput = document.getElementById("progress-page-end-date");
 const progressStats = document.getElementById("progress-stats");
 
 progressClassSelect.addEventListener("change", () => {
     updateProgressProjectDropdown();
+    updateProgressDateFiltersVisibility();
     updateProgressStats();
 });
 
 progressProjectSelect.addEventListener("change", updateProgressStats);
+progressStartDateInput.addEventListener("change", updateProgressStats);
+progressEndDateInput.addEventListener("change", updateProgressStats);
 
 export function updateProgressPageVisibility() {
     const onProgressPage = pageState.currentPage === "progress";
@@ -20,6 +26,7 @@ export function updateProgressPageVisibility() {
     if (onProgressPage) {
         updateProgressClassDropdown();
         updateProgressProjectDropdown();
+        updateProgressDateFiltersVisibility();
         updateProgressStats();
     }
 }
@@ -27,7 +34,7 @@ export function updateProgressPageVisibility() {
 export function updateProgressClassDropdown() {
     const previouslySelected = progressClassSelect.value;
     progressClassSelect.innerHTML = "";
-    progressClassSelect.appendChild(createOption("", "Select a class", true));
+    progressClassSelect.appendChild(createOption("", "All classes"));
 
     for (const course of coursesArray) {
         progressClassSelect.appendChild(createOption(course.id, course.name));
@@ -38,6 +45,15 @@ export function updateProgressClassDropdown() {
     } else {
         progressClassSelect.selectedIndex = 0;
     }
+
+    updateProgressDateFiltersVisibility();
+}
+
+function updateProgressDateFiltersVisibility() {
+    const showingAllClasses = !progressClassSelect.value;
+    progressDateFilters.classList.toggle("hidden", !showingAllClasses);
+    progressStartDateInput.disabled = !showingAllClasses;
+    progressEndDateInput.disabled = !showingAllClasses;
 }
 
 export function updateProgressProjectDropdown() {
@@ -60,7 +76,7 @@ export function updateProgressStats() {
     const course = coursesArray.find(course => course.id === progressClassSelect.value);
 
     if (!course) {
-        progressStats.appendChild(createText("p", "Select a class to see its progress.", "progress-stats-placeholder"));
+        renderAllSessionsProgress();
         return;
     }
 
@@ -82,6 +98,70 @@ export function updateProgressStats() {
 
     progressStats.appendChild(createSessionChart(sessions));
     progressStats.appendChild(createCumulativeChart(sessions));
+}
+
+function renderAllSessionsProgress() {
+    const { start, end, isInvalid } = getSelectedDateRange();
+    if (isInvalid) {
+        progressStats.appendChild(createText("p", "The end date must be on or after the start date.", "progress-stats-placeholder"));
+        return;
+    }
+
+    const sessions = coursesArray.flatMap(course => course.projects.flatMap(project =>
+        project.sessions.map(session => ({ ...session, courseName: course.name, projectName: project.name }))
+    )).filter(session => Number.isFinite(Number(session.duration)) && session.date)
+        .filter(session => isInDateRange(session.date, start, end))
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
+    const totalTime = sessions.reduce((sum, session) => sum + Number(session.duration), 0);
+
+    progressStats.appendChild(createText("h2", getDateRangeTitle(start, end), "progress-stats-title"));
+    addStatLine("Study sessions:", sessions.length);
+    addStatLine("Total time studied:", formatDuration(totalTime));
+
+    if (!sessions.length) {
+        progressStats.appendChild(createText("p", "No study sessions were recorded in this date range.", "progress-chart-empty"));
+        return;
+    }
+
+    const list = document.createElement("div");
+    list.className = "progress-sessions-list";
+    sessions.forEach(session => {
+        const item = document.createElement("div");
+        item.className = "progress-session-row";
+        const details = document.createElement("div");
+        details.append(
+            createText("strong", session.title || "Study session"),
+            createText("span", `${session.courseName} · ${session.projectName} · ${formatLongDate(localDate(session.date))}`)
+        );
+        item.append(details, createText("strong", formatDurationFriendly(Number(session.duration))));
+        list.appendChild(item);
+    });
+    progressStats.appendChild(list);
+}
+
+function getSelectedDateRange() {
+    const start = dateInputValue(progressStartDateInput.value);
+    const end = dateInputValue(progressEndDateInput.value);
+    return { start, end, isInvalid: Boolean(start && end && end < start) };
+}
+
+function dateInputValue(value) {
+    if (!value) return null;
+    const [year, month, day] = value.split("-").map(Number);
+    return new Date(year, month - 1, day);
+}
+
+function isInDateRange(value, start, end) {
+    const date = localDate(value);
+    return (!start || date >= start) && (!end || date <= end);
+}
+
+function getDateRangeTitle(start, end) {
+    if (start && end && start.getTime() === end.getTime()) return `Study sessions on ${formatLongDate(start)}`;
+    if (start && end) return `Study sessions from ${formatLongDate(start)} to ${formatLongDate(end)}`;
+    if (start) return `Study sessions from ${formatLongDate(start)}`;
+    if (end) return `Study sessions through ${formatLongDate(end)}`;
+    return "All study sessions";
 }
 
 function createSessionChart(sessions) {
