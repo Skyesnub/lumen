@@ -498,6 +498,26 @@ body.study-mode #page-description {
     color: var(--accent-ink);
 }
 
+.class-chart-controls {
+    align-items: center;
+}
+
+.class-chart-toggle {
+    --class-color: var(--accent);
+}
+
+.class-chart-toggle input {
+    accent-color: var(--class-color);
+}
+
+.class-chart-swatch {
+    width: 10px;
+    height: 10px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: var(--class-color);
+}
+
 @media (max-width: 520px) {
     .progress-date-filters { grid-template-columns: 1fr; }
 }

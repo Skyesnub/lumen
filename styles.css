@@ -377,10 +377,32 @@ select {
     r: 7;
 }
 
+.class-chart-line {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 3;
+    stroke-dasharray: 1600;
+    stroke-dashoffset: 1600;
+    animation: chart-line-draw 900ms cubic-bezier(.4, 0, .2, 1) forwards;
+}
+
+.class-chart-point {
+    fill: var(--surface-raised);
+    stroke-width: 2.5;
+    cursor: pointer;
+    transition: r .15s ease, fill .15s ease;
+}
+
+.class-chart-point:hover {
+    fill: var(--surface);
+    r: 7;
+}
+
 .progress-chart-tooltip {
     position: absolute;
     z-index: 2;
-    max-width: min(250px, calc(100% - 16px));
+    max-width: min(360px, calc(100% - 16px));
     padding: 5px 8px;
     border-radius: 7px;
     background: var(--ink);
@@ -467,4 +489,6 @@ select {
     .chart-area,
     .chart-line,
     .chart-end-dot { animation: none; }
+
+    .class-chart-line { animation: none; }
 }

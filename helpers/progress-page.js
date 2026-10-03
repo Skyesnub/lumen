@@ -108,7 +108,7 @@ function renderAllSessionsProgress() {
     }
 
     const sessions = coursesArray.flatMap(course => course.projects.flatMap(project =>
-        project.sessions.map(session => ({ ...session, courseName: course.name, projectName: project.name }))
+        project.sessions.map(session => ({ ...session, courseId: course.id, courseName: course.name, projectName: project.name }))
     )).filter(session => Number.isFinite(Number(session.duration)) && session.date)
         .filter(session => isInDateRange(session.date, start, end))
         .sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -122,6 +122,10 @@ function renderAllSessionsProgress() {
         progressStats.appendChild(createText("p", "No study sessions were recorded in this date range.", "progress-chart-empty"));
         return;
     }
+
+    const chronologicalSessions = [...sessions].sort((a, b) => new Date(a.date) - new Date(b.date));
+    progressStats.appendChild(createSessionChart(chronologicalSessions));
+    progressStats.appendChild(createClassComparisonChart(chronologicalSessions));
 
     const list = document.createElement("div");
     list.className = "progress-sessions-list";
@@ -258,6 +262,46 @@ function createCumulativeChart(sessions) {
     return section;
 }
 
+function createClassComparisonChart(sessions) {
+    const section = createChartSection("Study time by class", "Compare cumulative study time across your classes.");
+    const controls = document.createElement("div");
+    controls.className = "progress-chart-controls class-chart-controls";
+    const canvas = document.createElement("div");
+    canvas.className = "progress-chart-canvas";
+    const classIdsWithSessions = new Set(sessions.map(session => session.courseId));
+    const classes = coursesArray
+        .filter(course => classIdsWithSessions.has(course.id))
+        .map((course, index) => ({ ...course, color: classChartColor(index) }));
+    const selectedClassIds = new Set(classes.map(course => course.id));
+
+    const render = () => {
+        const selectedClasses = classes.filter(course => selectedClassIds.has(course.id));
+        renderClassComparisonLine(canvas, sessions, selectedClasses);
+    };
+
+    classes.forEach(course => {
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.checked = true;
+        input.addEventListener("change", () => {
+            if (input.checked) selectedClassIds.add(course.id);
+            else selectedClassIds.delete(course.id);
+            render();
+        });
+        const label = document.createElement("label");
+        label.className = "chart-toggle class-chart-toggle";
+        label.style.setProperty("--class-color", course.color);
+        const swatch = document.createElement("span");
+        swatch.className = "class-chart-swatch";
+        label.append(input, swatch, document.createTextNode(course.name));
+        controls.appendChild(label);
+    });
+
+    section.append(controls, canvas);
+    render();
+    return section;
+}
+
 function renderSessionBars(container, points, mean, median, bestWeek, options) {
     const width = 700;
     const height = 270;
@@ -338,6 +382,51 @@ function renderCumulativeLine(container, sessions, endMode) {
     attachChartTooltip(container);
 }
 
+function renderClassComparisonLine(container, sessions, classes) {
+    if (!classes.length) {
+        container.innerHTML = '<p class="progress-chart-empty">Select a class to display its study time.</p>';
+        return;
+    }
+
+    const selectedClassIds = new Set(classes.map(course => course.id));
+    const visibleSessions = sessions
+        .filter(session => selectedClassIds.has(session.courseId))
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+    const width = 700;
+    const height = 270;
+    const pad = { top: 24, right: 44, bottom: 48, left: 64 };
+    const plotWidth = width - pad.left - pad.right;
+    const plotHeight = height - pad.top - pad.bottom;
+    const start = startOfDay(localDate(visibleSessions[0].date));
+    const end = startOfDay(localDate(visibleSessions[visibleSessions.length - 1].date));
+    const span = Math.max(1, end - start);
+    const x = date => pad.left + ((date - start) / span) * plotWidth;
+    const series = classes.map(course => {
+        const classSessions = visibleSessions.filter(session => session.courseId === course.id);
+        let total = 0;
+        const points = classSessions.map(session => {
+            total += Number(session.duration);
+            return { date: startOfDay(localDate(session.date)), total };
+        });
+        return { ...course, total, points };
+    });
+    const max = Math.max(...series.map(item => item.total), 60) * 1.12;
+    const y = value => pad.top + plotHeight - (value / max) * plotHeight;
+    const grid = gridLines(pad, plotWidth, plotHeight, max, y, "hours");
+    const ticks = dateTicks(start, end, 4).map(date => `<text class="chart-axis-text" x="${x(date).toFixed(1)}" y="${height - 16}" text-anchor="middle">${formatShortDate(date)}</text>`).join("");
+    const lines = series.map(item => {
+        const path = [`M ${x(start).toFixed(1)} ${y(0).toFixed(1)}`];
+        item.points.forEach(point => path.push(`L ${x(point.date).toFixed(1)} ${y(point.total).toFixed(1)}`));
+        if (end > start) path.push(`L ${x(end).toFixed(1)} ${y(item.total).toFixed(1)}`);
+        return `<path class="class-chart-line" style="stroke:${item.color}" d="${path.join(" ")}"/>`;
+    }).join("");
+    const points = series.flatMap(item => item.points.map(point =>
+        `<circle class="class-chart-point" style="stroke:${item.color}" cx="${x(point.date).toFixed(1)}" cy="${y(point.total).toFixed(1)}" r="5" tabindex="0" data-tooltip="${escapeHtml(`${item.name} · ${formatLongDate(point.date)} · ${formatDurationFriendly(point.total)} total`)}"/>`
+    )).join("");
+    container.innerHTML = chartSvg(width, height, `${grid}${lines}${points}<text class="chart-axis-title" x="${pad.left + plotWidth / 2}" y="${height - 2}" text-anchor="middle">Date</text>${ticks}`);
+    attachChartTooltip(container);
+}
+
 function attachChartTooltip(container) {
     const tooltip = document.createElement("div");
     tooltip.className = "progress-chart-tooltip";
@@ -352,10 +441,12 @@ function attachChartTooltip(container) {
         const rect = container.getBoundingClientRect();
         tooltip.classList.add("visible");
         const halfWidth = tooltip.offsetWidth / 2;
+        const tooltipHeight = tooltip.offsetHeight;
+        const pointY = clientY - rect.top;
         const x = Math.max(halfWidth + 8, Math.min(clientX - rect.left, rect.width - halfWidth - 8));
         tooltip.style.left = `${x}px`;
-        tooltip.style.top = `${clientY - rect.top}px`;
-        tooltip.classList.toggle("below", clientY - rect.top < 54);
+        tooltip.style.top = `${pointY}px`;
+        tooltip.classList.toggle("below", pointY < tooltipHeight + 10);
     };
 
     container.addEventListener("mousemove", event => show(event.target.closest?.("[data-tooltip]"), event.clientX, event.clientY));
@@ -516,6 +607,9 @@ function formatLongDate(date) { return date.toLocaleDateString(undefined, { year
 function formatStudyHours(seconds) {
     const hours = seconds / 3600;
     return `${hours.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${hours === 1 ? "hour" : "hours"}`;
+}
+function classChartColor(index) {
+    return `hsl(${(index * 67 + 202) % 360}, 62%, 45%)`;
 }
 function escapeHtml(value) { return String(value).replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[character]); }
 
