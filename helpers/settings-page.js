@@ -27,7 +27,7 @@ const shapeColorSelect = document.getElementById("shape-color-select");
 const themeColorSelect = document.getElementById("theme-color-select");
 
 export const settingsState = {
-    shapeColor: "blue",
+    shapeColor: "indigo",
     themeColor: "indigo"
 };
 
