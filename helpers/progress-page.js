@@ -124,8 +124,9 @@ function renderAllSessionsProgress() {
     }
 
     const chronologicalSessions = [...sessions].sort((a, b) => new Date(a.date) - new Date(b.date));
-    progressStats.appendChild(createSessionChart(chronologicalSessions));
-    progressStats.appendChild(createClassComparisonChart(chronologicalSessions));
+    const classColors = getClassChartColors(chronologicalSessions);
+    progressStats.appendChild(createSessionChart(chronologicalSessions, classColors));
+    progressStats.appendChild(createClassComparisonChart(chronologicalSessions, classColors));
 
     const list = document.createElement("div");
     list.className = "progress-sessions-list";
@@ -168,9 +169,7 @@ function getDateRangeTitle(start, end) {
     return "All study sessions";
 }
 
-function createSessionChart(sessions) {
-    const bestWeek = getBestWeek(sessions);
-
+function createSessionChart(sessions, classColors = null) {
     const section = createChartSection("Session length", "Time spent in each study session");
     const chartTitle = section.querySelector("h3");
     const chartDescription = section.querySelector("p");
@@ -178,8 +177,16 @@ function createSessionChart(sessions) {
     controls.className = "progress-chart-controls";
     const canvas = document.createElement("div");
     canvas.className = "progress-chart-canvas";
+    const selectedClassIds = classColors ? new Set(classColors.keys()) : null;
 
-    const options = { mean: false, median: false, bestWeek: false, view: "session", includeEmptyDays: false };
+    const options = {
+        mean: false,
+        median: false,
+        bestWeek: false,
+        view: "session",
+        includeEmptyDays: false,
+        colorForSession: session => classColors?.get(session.courseId)
+    };
     const viewLabel = document.createElement("label");
     viewLabel.className = "chart-range-label";
     viewLabel.textContent = "View";
@@ -188,6 +195,28 @@ function createSessionChart(sessions) {
     viewSelect.append(createOption("session", "Per session"), createOption("day", "Per day"));
     viewLabel.appendChild(viewSelect);
     controls.appendChild(viewLabel);
+
+    if (classColors) {
+        coursesArray
+            .filter(course => classColors.has(course.id))
+            .forEach(course => {
+                const input = document.createElement("input");
+                input.type = "checkbox";
+                input.checked = true;
+                input.addEventListener("change", () => {
+                    if (input.checked) selectedClassIds.add(course.id);
+                    else selectedClassIds.delete(course.id);
+                    render();
+                });
+                const label = document.createElement("label");
+                label.className = "chart-toggle class-chart-toggle";
+                label.style.setProperty("--class-color", classColors.get(course.id));
+                const swatch = document.createElement("span");
+                swatch.className = "class-chart-swatch";
+                label.append(input, swatch, document.createTextNode(course.name));
+                controls.appendChild(label);
+            });
+    }
 
     const emptyDaysInput = document.createElement("input");
     emptyDaysInput.type = "checkbox";
@@ -199,8 +228,17 @@ function createSessionChart(sessions) {
     const metrics = document.createElement("div");
     metrics.className = "progress-chart-metrics";
     const render = () => {
-        const points = options.view === "day" ? groupSessionsByDay(sessions, options.includeEmptyDays) : sessions;
+        const visibleSessions = selectedClassIds
+            ? sessions.filter(session => selectedClassIds.has(session.courseId))
+            : sessions;
+        if (!visibleSessions.length) {
+            canvas.innerHTML = '<p class="progress-chart-empty">Select a class to display its sessions.</p>';
+            metrics.innerHTML = "";
+            return;
+        }
+        const points = options.view === "day" ? groupSessionsByDay(visibleSessions, options.includeEmptyDays) : visibleSessions;
         const { mean, median } = getDurationStats(points);
+        const bestWeek = getBestWeek(visibleSessions);
         chartTitle.textContent = options.view === "day" ? "Daily study time" : "Session length";
         chartDescription.textContent = options.view === "day" ? "Total study time for each day" : "Time spent in each study session";
         renderSessionBars(canvas, points, mean, median, bestWeek, options);
@@ -262,7 +300,7 @@ function createCumulativeChart(sessions) {
     return section;
 }
 
-function createClassComparisonChart(sessions) {
+function createClassComparisonChart(sessions, classColors) {
     const section = createChartSection("Study time by class", "Compare cumulative study time across your classes.");
     const controls = document.createElement("div");
     controls.className = "progress-chart-controls class-chart-controls";
@@ -271,7 +309,7 @@ function createClassComparisonChart(sessions) {
     const classIdsWithSessions = new Set(sessions.map(session => session.courseId));
     const classes = coursesArray
         .filter(course => classIdsWithSessions.has(course.id))
-        .map((course, index) => ({ ...course, color: classChartColor(index) }));
+        .map(course => ({ ...course, color: classColors.get(course.id) }));
     const selectedClassIds = new Set(classes.map(course => course.id));
 
     const render = () => {
@@ -328,7 +366,9 @@ function renderSessionBars(container, points, mean, median, bestWeek, options) {
         const barHeight = Math.max(1, pad.top + plotHeight - y(Number(session.duration)));
         const x = pad.left + index * step + (step - barWidth) / 2;
         const name = options.view === "day" ? (session.title || "Daily study total") : (session.title || `Study session ${index + 1}`);
-        bars += `<rect class="chart-bar" x="${x.toFixed(1)}" y="${y(Number(session.duration)).toFixed(1)}" width="${barWidth.toFixed(1)}" height="${barHeight.toFixed(1)}" rx="3" tabindex="0" data-tooltip="${escapeHtml(`${name} · ${formatLongDate(localDate(session.date))} · ${formatDurationFriendly(Number(session.duration))}`)}"/>`;
+        const color = options.colorForSession(session);
+        const colorStyle = color ? ` style="fill:${color}"` : "";
+        bars += `<rect class="chart-bar"${colorStyle} x="${x.toFixed(1)}" y="${y(Number(session.duration)).toFixed(1)}" width="${barWidth.toFixed(1)}" height="${barHeight.toFixed(1)}" rx="3" tabindex="0" data-tooltip="${escapeHtml(`${name} · ${formatLongDate(localDate(session.date))} · ${formatDurationFriendly(Number(session.duration))}`)}"/>`;
     });
     if (options.bestWeek && lastHighlighted >= 0) {
         const x = pad.left + firstHighlighted * step;
@@ -610,6 +650,12 @@ function formatStudyHours(seconds) {
 }
 function classChartColor(index) {
     return `hsl(${(index * 67 + 202) % 360}, 62%, 45%)`;
+}
+function getClassChartColors(sessions) {
+    const classIdsWithSessions = new Set(sessions.map(session => session.courseId));
+    return new Map(coursesArray
+        .filter(course => classIdsWithSessions.has(course.id))
+        .map((course, index) => [course.id, classChartColor(index)]));
 }
 function escapeHtml(value) { return String(value).replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[character]); }
 
