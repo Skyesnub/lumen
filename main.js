@@ -8,6 +8,7 @@ import { updateDropdown,
         updateProjectsPageVisibility
 } from "./helpers/projects-page.js";
 import { updateProgressPageVisibility } from "./helpers/progress-page.js";
+import { updateHomeworkPageVisibility } from "./helpers/homework-page.js";
 import { updateSettingsPageVisibility } from "./helpers/settings-page.js";
 import { pageNames, pageState } from "./helpers/state.js";
 import { disableWakeLock } from "./helpers/wakelock.js";
@@ -27,6 +28,7 @@ disableWakeLock();
 const pageButtons = {
     timer: document.getElementById("timer-page-button"),
     projects: document.getElementById("projects-page-button"),
+    homework: document.getElementById("homework-page-button"),
     progress: document.getElementById("progress-page-button"),
     settings: document.getElementById("settings-page-button")
 };
@@ -42,6 +44,7 @@ function updatePageText() {
 function updateSelectedButton() {
     pageButtons.timer.classList.toggle("selected", pageState.currentPage === "timer");
     pageButtons.projects.classList.toggle("selected", pageState.currentPage === "projects");
+    pageButtons.homework.classList.toggle("selected", pageState.currentPage === "homework");
     pageButtons.progress.classList.toggle("selected", pageState.currentPage === "progress");
     pageButtons.settings.classList.toggle("selected", pageState.currentPage === "settings");
 
@@ -49,6 +52,7 @@ function updateSelectedButton() {
     updatePageText();
     updateStudyPageVisibility();
     updateProjectsPageVisibility();
+    updateHomeworkPageVisibility();
     updateProgressPageVisibility();
     updateSettingsPageVisibility();
 }
@@ -60,6 +64,7 @@ function goToPage(pageName) {
 
 pageButtons.timer.onclick = () => goToPage("timer");
 pageButtons.projects.onclick = () => goToPage("projects");
+pageButtons.homework.onclick = () => goToPage("homework");
 pageButtons.progress.onclick = () => goToPage("progress");
 pageButtons.settings.onclick = () => goToPage("settings");
 

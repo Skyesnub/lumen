@@ -2,6 +2,7 @@ import { db } from "./db.js";
 import { loadCoursesFromDatabase, clearCoursesArray } from "./projects-page.js";
 import { updateTimerPageClassDropdown, updateTimerPageProjectDropdown } from "./study-page.js";
 import { updateProgressClassDropdown, updateProgressProjectDropdown, updateProgressStats } from "./progress-page.js";
+import { loadHomeworkFromDatabase, clearHomework } from "./homework-page.js";
 
 const emailInput = document.getElementById("auth-email-input");
 const passwordInput = document.getElementById("auth-password-input");
@@ -95,6 +96,7 @@ function refreshCourseDependentDropdowns() {
     updateProgressClassDropdown();
     updateProgressProjectDropdown();
     updateProgressStats();
+    return loadHomeworkFromDatabase();
 }
 
 db.auth.onAuthStateChange((event, session) => {
@@ -110,6 +112,7 @@ db.auth.onAuthStateChange((event, session) => {
         // Make sure the next person to use this browser doesn't see
         // whatever the previous person had loaded.
         clearCoursesArray();
+        clearHomework();
         refreshCourseDependentDropdowns();
     }
 });

@@ -167,6 +167,59 @@
                 </div>
             </section>
 
+            <section id="homework-page-content" class="page hidden">
+                <div class="card">
+                    <h2>Add homework</h2>
+                    <div class="label-select-group">
+                        <label for="homework-title-input">Assignment</label>
+                        <input id="homework-title-input" type="text" placeholder="e.g. Read chapter 4">
+                    </div>
+                    <div class="label-select-group">
+                        <label for="homework-course-select">Class</label>
+                        <select id="homework-course-select"></select>
+                    </div>
+                    <div class="label-select-group">
+                        <label for="homework-project-select">Project (optional)</label>
+                        <select id="homework-project-select"></select>
+                    </div>
+                    <div class="label-select-group">
+                        <label for="homework-estimate-input">Estimated time (minutes)</label>
+                        <input id="homework-estimate-input" type="number" min="1" step="1" placeholder="e.g. 30">
+                    </div>
+                    <div class="label-select-group">
+                        <label for="homework-due-date-input">Due date (optional)</label>
+                        <input id="homework-due-date-input" type="date">
+                    </div>
+                    <p id="homework-warning" class="hidden warning-text"></p>
+                    <button id="add-homework-button">Add assignment</button>
+                </div>
+                <div class="card homework-calendar-card">
+                    <div class="homework-calendar-heading">
+                        <h2>Week at a glance</h2>
+                        <div class="homework-calendar-controls" aria-label="Calendar week controls">
+                            <button id="homework-calendar-previous" type="button" aria-label="Previous week">‹</button>
+                            <button id="homework-calendar-today" type="button">Today</button>
+                            <button id="homework-calendar-next" type="button" aria-label="Next week">›</button>
+                        </div>
+                    </div>
+                    <p id="homework-calendar-range" class="homework-calendar-range" aria-live="polite"></p>
+                    <div id="homework-calendar" class="homework-calendar" aria-label="Assignments by day"></div>
+                    <p class="homework-calendar-legend"><span class="legend-dot legend-due"></span> Due <span class="legend-dot legend-complete"></span> Completed</p>
+                </div>
+                <div class="card">
+                    <h2>To do</h2>
+                    <div id="homework-pending-list" class="homework-list"></div>
+                    <p id="homework-total" class="homework-total"></p>
+                </div>
+                <div class="card">
+                    <div class="homework-completed-heading">
+                        <h2>Recently completed</h2>
+                        <button id="homework-show-all-button" class="homework-expand-button" type="button">Show all</button>
+                    </div>
+                    <div id="homework-completed-list" class="homework-list"></div>
+                </div>
+            </section>
+
             <section id="settings-page-content" class="page hidden">
                 <div class="card">
                     <h2>Appearance</h2>
@@ -200,6 +253,12 @@
                     <path d="M3 13l9 5 9-5"/>
                 </svg>
                 <span>Projects</span>
+            </button>
+            <button id="homework-page-button" class="nav-button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M8 4h8l3 3v13H5V4h3z"/><path d="M9 12l2 2 4-4M9 7h4"/>
+                </svg>
+                <span>Homework</span>
             </button>
             <button id="progress-page-button" class="nav-button">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

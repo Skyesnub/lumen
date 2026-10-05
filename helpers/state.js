@@ -28,6 +28,10 @@ export const pageNames = {
         title: "Projects",
         description: "Keep track of the projects you are studying for."
     },
+    homework: {
+        title: "Homework",
+        description: "Keep track of assignments and the time you need to finish them."
+    },
     progress: {
         title: "Progress Summary",
         description: "Review your study progress and completed sessions."
