@@ -161,14 +161,35 @@ async function addAssignment() {
 
 async function setCompleted(assignment, completed) {
     const completedAt = completed ? new Date().toISOString() : null;
+    const spentMinutes = completed
+        ? Number(assignment.estimated_minutes || 0)
+        : Number(assignment.spent_minutes || 0);
     const { error } = await db.from("homework_assignments")
-        .update({ completed_at: completedAt }).eq("id", assignment.id);
+        .update({ completed_at: completedAt, spent_minutes: spentMinutes }).eq("id", assignment.id);
     if (error) {
         console.error(error);
         renderAssignments();
         return;
     }
     assignment.completed_at = completedAt;
+    assignment.spent_minutes = spentMinutes;
+    renderAssignments();
+}
+
+async function setMinutesSpent(assignment, input) {
+    const spent = Number(input.value);
+    if (!Number.isInteger(spent) || spent < 0) {
+        input.value = String(Number(assignment.spent_minutes || 0));
+        return;
+    }
+    const { error } = await db.from("homework_assignments")
+        .update({ spent_minutes: spent }).eq("id", assignment.id);
+    if (error) {
+        console.error(error);
+        input.value = String(Number(assignment.spent_minutes || 0));
+        return;
+    }
+    assignment.spent_minutes = spent;
     renderAssignments();
 }
 
@@ -194,7 +215,10 @@ function renderAssignments() {
 
     if (pending.length) pending.forEach(item => pendingList.append(createAssignmentRow(item, false)));
     else pendingList.append(createEmptyMessage("No homework to do. Add an assignment above."));
-    const totalMinutes = pending.reduce((sum, item) => sum + Number(item.estimated_minutes || 0), 0);
+    const totalMinutes = pending.reduce((sum, item) => sum + Math.max(
+        0,
+        Number(item.estimated_minutes || 0) - Number(item.spent_minutes || 0)
+    ), 0);
     totalLabel.textContent = `Estimated time remaining: ${formatDuration(totalMinutes)}`;
 
     const visibleCompleted = showAllCompleted ? completed : completed.slice(0, 5);
@@ -275,10 +299,14 @@ function createCalendarAssignment(item) {
     const course = coursesArray.find(value => value.id === item.course_id);
     const project = course?.projects.find(value => value.id === item.project_id);
     const block = document.createElement("div");
-    block.className = `homework-calendar-assignment ${item.completed_at ? "is-complete" : "is-due"}`;
+    const estimate = Number(item.estimated_minutes || 0);
+    const spent = Number(item.spent_minutes || 0);
+    const progressPercent = item.completed_at ? 100 : estimate ? Math.min(100, (spent / estimate) * 100) : 0;
+    block.className = "homework-calendar-assignment is-progress";
+    block.style.setProperty("--assignment-progress", `${progressPercent}%`);
     block.tabIndex = 0;
     block.setAttribute("role", "group");
-    const detail = [course?.name || "Class removed", project?.name, `${Number(item.estimated_minutes || 0)} min`, item.completed_at ? "Completed" : "Due"].filter(Boolean).join(" · ");
+    const detail = [course?.name || "Class removed", project?.name, `${spent} of ${estimate} min done`, item.completed_at ? "Completed" : "In progress"].filter(Boolean).join(" · ");
     block.setAttribute("aria-label", `${item.title}. ${detail}`);
     block.title = `${item.title} · ${detail}`;
     const title = document.createElement("strong");
@@ -330,13 +358,26 @@ function createAssignmentRow(item, completed) {
     const estimate = document.createElement("span");
     estimate.className = "homework-estimate";
     estimate.textContent = formatDuration(Number(item.estimated_minutes || 0));
+    const progress = document.createElement("label");
+    progress.className = "homework-progress";
+    const progressLabel = document.createElement("span");
+    progressLabel.textContent = "Minutes done";
+    const minutesInput = document.createElement("input");
+    minutesInput.type = "number";
+    minutesInput.min = "0";
+    minutesInput.step = "1";
+    minutesInput.inputMode = "numeric";
+    minutesInput.value = String(Number(item.spent_minutes || 0));
+    minutesInput.setAttribute("aria-label", `Minutes spent on ${item.title}`);
+    minutesInput.addEventListener("change", () => setMinutesSpent(item, minutesInput));
+    progress.append(progressLabel, minutesInput);
     const remove = document.createElement("button");
     remove.type = "button";
     remove.className = "homework-delete-button";
     remove.textContent = "Delete";
     remove.setAttribute("aria-label", `Delete ${item.title}`);
     remove.addEventListener("click", () => deleteAssignment(item));
-    row.append(checkbox, info, estimate, remove);
+    row.append(checkbox, info, progress, estimate, remove);
     return row;
 }
 

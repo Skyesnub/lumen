@@ -4,12 +4,14 @@ create table if not exists homework_assignments (
   project_id uuid references projects(id) on delete set null,
   title text not null,
   estimated_minutes integer not null check (estimated_minutes > 0),
+  spent_minutes integer not null default 0 check (spent_minutes >= 0),
   due_date date,
   completed_at timestamptz,
   created_at timestamptz not null default now()
 );
 
 alter table homework_assignments add column if not exists due_date date;
+alter table homework_assignments add column if not exists spent_minutes integer not null default 0 check (spent_minutes >= 0);
 
 alter table homework_assignments enable row level security;
 
