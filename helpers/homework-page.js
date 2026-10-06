@@ -13,6 +13,10 @@ const pendingList = document.getElementById("homework-pending-list");
 const completedList = document.getElementById("homework-completed-list");
 const totalLabel = document.getElementById("homework-total");
 const showAllButton = document.getElementById("homework-show-all-button");
+const quizTitleInput = document.getElementById("quiz-title-input");
+const quizCourseSelect = document.getElementById("quiz-course-select");
+const quizDateInput = document.getElementById("quiz-date-input");
+const quizWarning = document.getElementById("quiz-warning");
 const calendar = document.getElementById("homework-calendar");
 const calendarRange = document.getElementById("homework-calendar-range");
 
@@ -20,6 +24,7 @@ const currentWeekStart = startOfWeek(new Date());
 let visibleWeekStart = new Date(currentWeekStart);
 
 let assignments = [];
+let quizzes = [];
 let showAllCompleted = false;
 
 courseSelect.addEventListener("change", updateProjectSelect);
@@ -39,6 +44,10 @@ document.getElementById("add-homework-button").addEventListener("click", addAssi
 titleInput.addEventListener("keydown", event => {
     if (event.key === "Enter") addAssignment();
 });
+document.getElementById("add-quiz-button").addEventListener("click", addQuiz);
+quizTitleInput.addEventListener("keydown", event => {
+    if (event.key === "Enter") addQuiz();
+});
 
 export function updateHomeworkPageVisibility() {
     const visible = pageState.currentPage === "homework";
@@ -50,19 +59,22 @@ export function updateHomeworkPageVisibility() {
 }
 
 export async function loadHomeworkFromDatabase() {
-    const { data, error } = await db
+    const [{ data, error }, quizResult] = await Promise.all([db
         .from("homework_assignments")
-        .select("*");
+        .select("*"), db.from("quiz_events").select("*")]);
     if (error) {
         console.error(error);
         return;
     }
+    if (quizResult.error) console.error(quizResult.error);
     assignments = data || [];
+    quizzes = quizResult.data || [];
     renderAssignments();
 }
 
 export function clearHomework() {
     assignments = [];
+    quizzes = [];
     renderAssignments();
 }
 
@@ -71,8 +83,41 @@ function updateCourseSelect() {
     courseSelect.replaceChildren();
     courseSelect.append(makeOption("", "Choose a class", true));
     coursesArray.forEach(course => courseSelect.append(makeOption(course.id, course.name)));
+    const previousQuizCourse = quizCourseSelect.value;
+    quizCourseSelect.replaceChildren();
+    quizCourseSelect.append(makeOption("", "Choose a class", true));
+    coursesArray.forEach(course => quizCourseSelect.append(makeOption(course.id, course.name)));
+    if (coursesArray.some(course => course.id === previousQuizCourse)) quizCourseSelect.value = previousQuizCourse;
     if (coursesArray.some(course => course.id === previous)) courseSelect.value = previous;
     updateProjectSelect();
+}
+
+async function addQuiz() {
+    const title = quizTitleInput.value.trim();
+    const courseId = quizCourseSelect.value;
+    const date = quizDateInput.value;
+    if (!title || !courseId || !date) {
+        quizWarning.textContent = "Enter a quiz name, choose a class, and select a date.";
+        quizWarning.classList.remove("hidden");
+        return;
+    }
+    quizWarning.classList.add("hidden");
+    const { data, error } = await db.from("quiz_events").insert({
+        title,
+        course_id: courseId,
+        quiz_date: date
+    }).select().single();
+    if (error) {
+        console.error(error);
+        quizWarning.textContent = "Could not save this quiz. Please try again.";
+        quizWarning.classList.remove("hidden");
+        return;
+    }
+    quizzes.push(data);
+    quizTitleInput.value = "";
+    quizDateInput.value = "";
+    visibleWeekStart = startOfWeek(new Date(`${date}T00:00:00`));
+    renderCalendar();
 }
 
 function updateProjectSelect() {
@@ -190,10 +235,12 @@ function renderCalendar() {
         label.append(weekday, number);
 
         const dayAssignments = assignments.filter(item => item.due_date === dateKey);
+        const dayQuizzes = quizzes.filter(item => item.quiz_date === dateKey);
         const list = document.createElement("div");
         list.className = "homework-calendar-items";
-        if (dayAssignments.length) {
+        if (dayAssignments.length || dayQuizzes.length) {
             dayAssignments.forEach(item => list.append(createCalendarAssignment(item)));
+            dayQuizzes.forEach(item => list.append(createCalendarQuiz(item)));
         } else {
             const empty = document.createElement("span");
             empty.className = "homework-calendar-empty";
@@ -203,6 +250,25 @@ function renderCalendar() {
         day.append(label, list);
         calendar.append(day);
     }
+}
+
+function createCalendarQuiz(quiz) {
+    const course = coursesArray.find(value => value.id === quiz.course_id);
+    const block = document.createElement("div");
+    block.className = "homework-calendar-assignment is-quiz";
+    block.tabIndex = 0;
+    block.setAttribute("role", "group");
+    const detail = [course?.name || "Class removed", "Quiz"].join(" · ");
+    block.setAttribute("aria-label", `${quiz.title}. ${detail}`);
+    block.title = `${quiz.title} · ${detail}`;
+    const title = document.createElement("strong");
+    title.textContent = quiz.title;
+    const tooltip = document.createElement("span");
+    tooltip.className = "homework-calendar-tooltip";
+    tooltip.setAttribute("aria-hidden", "true");
+    tooltip.textContent = detail;
+    block.append(title, tooltip);
+    return block;
 }
 
 function createCalendarAssignment(item) {

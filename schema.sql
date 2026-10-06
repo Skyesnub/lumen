@@ -31,6 +31,14 @@ create table homework_assignments (
   created_at timestamptz not null default now()
 );
 
+create table quiz_events (
+  id uuid primary key default gen_random_uuid(),
+  course_id uuid references courses(id) on delete cascade not null,
+  title text not null,
+  quiz_date date not null,
+  created_at timestamptz not null default now()
+);
+
 -- Run this safely in an existing Supabase project to add titles to sessions
 -- that were created before this column existed.
 alter table sessions add column if not exists title text not null default 'Study session';
@@ -39,6 +47,7 @@ alter table courses enable row level security;
 alter table projects enable row level security;
 alter table sessions enable row level security;
 alter table homework_assignments enable row level security;
+alter table quiz_events enable row level security;
 
 create policy "Users manage their own courses"
   on courses for all
@@ -71,4 +80,9 @@ create policy "Users manage homework in their own courses"
     ))
   );
 
-grant select, insert, update, delete on courses, projects, sessions, homework_assignments to authenticated;
+create policy "Users manage quizzes in their own courses"
+  on quiz_events for all
+  using (exists (select 1 from courses where courses.id = quiz_events.course_id and courses.user_id = auth.uid()))
+  with check (exists (select 1 from courses where courses.id = quiz_events.course_id and courses.user_id = auth.uid()));
+
+grant select, insert, update, delete on courses, projects, sessions, homework_assignments, quiz_events to authenticated;
